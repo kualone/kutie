@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(nlohmann_json CONFIG)
+find_dependency(unofficial-webview2 CONFIG)
+
+include("${CMAKE_CURRENT_LIST_DIR}/KutieTargets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/KutieEmbedAssets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/KutieWindows.cmake")
+
+set(_KUTIE_PACKAGE_ROOT "${PACKAGE_PREFIX_DIR}/share/kutie")

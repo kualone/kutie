@@ -1,0 +1,16 @@
+# kutie_apply_windows_manifest(target)
+# Applies Per-Monitor V2 DPI awareness manifest on MSVC builds.
+function(kutie_apply_windows_manifest target)
+    if(NOT MSVC)
+        return()
+    endif()
+    if(NOT TARGET ${target})
+        message(FATAL_ERROR "kutie_apply_windows_manifest: target '${target}' does not exist")
+    endif()
+
+    set(_kutie_manifest_dir "${CMAKE_CURRENT_BINARY_DIR}/kutie-manifest-${target}")
+    set(_kutie_manifest_file "${_kutie_manifest_dir}/dpi_awareness.manifest")
+    file(MAKE_DIRECTORY "${_kutie_manifest_dir}")
+    file(WRITE "${_kutie_manifest_file}" "${KUTIE_DPI_MANIFEST_CONTENT}")
+    target_sources(${target} PRIVATE "${_kutie_manifest_file}")
+endfunction()

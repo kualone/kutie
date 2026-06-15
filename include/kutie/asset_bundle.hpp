@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -15,7 +16,10 @@ public:
         std::string content_type;
     };
 
+    using EmbeddedLoader = std::function<void(void* module_handle, AssetBundle& bundle)>;
+
     static AssetBundle& Shared();
+    static void RegisterEmbeddedLoader(EmbeddedLoader loader);
 
     AssetBundle(const AssetBundle&) = delete;
     AssetBundle& operator=(const AssetBundle&) = delete;

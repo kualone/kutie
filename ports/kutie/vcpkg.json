@@ -1,0 +1,12 @@
+{
+  "name": "kutie",
+  "version": "0.1.0",
+  "description": "Lightweight C++ desktop framework with WebView2",
+  "homepage": "https://github.com/kualone/kutie.git",
+  "license": "MIT",
+  "supports": "windows & !uwp",
+  "dependencies": [
+    "nlohmann-json",
+    "webview2"
+  ]
+}

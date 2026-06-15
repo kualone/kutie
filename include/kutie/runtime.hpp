@@ -12,6 +12,8 @@ class Runtime {
 public:
     struct Config {
         ShellConfig shell;
+        /// Optional disk fallback path for development (UTF-8). When empty, uses {exe_dir}/frontend.
+        std::string dev_frontend_path;
     };
 
     using ReadyHandler = std::function<void(Runtime&)>;

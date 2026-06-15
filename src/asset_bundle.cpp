@@ -31,11 +31,26 @@ std::wstring Utf8ToWide(const std::string& text) {
     return result;
 }
 
+std::vector<AssetBundle::EmbeddedLoader>& EmbeddedLoaders() {
+    static std::vector<AssetBundle::EmbeddedLoader> loaders;
+    return loaders;
+}
+
 } // namespace
 
 AssetBundle& AssetBundle::Shared() {
     static AssetBundle instance;
     return instance;
+}
+
+void AssetBundle::RegisterEmbeddedLoader(EmbeddedLoader loader) {
+    EmbeddedLoaders().push_back(std::move(loader));
+}
+
+void AssetBundle::LoadEmbedded(void* module_handle) {
+    for (const auto& loader : EmbeddedLoaders()) {
+        loader(module_handle, *this);
+    }
 }
 
 std::string AssetBundle::NormalizePath(std::string path) {

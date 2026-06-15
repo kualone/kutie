@@ -86,7 +86,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Build complete." -ForegroundColor Green
-$ExePath = Join-Path $BuildDir "sample.exe"
+$ExePath = Join-Path $BuildDir "sample\sample.exe"
 if (Test-Path $ExePath) {
     Write-Host "Output: $ExePath" -ForegroundColor Green
 }

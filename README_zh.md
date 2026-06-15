@@ -75,6 +75,7 @@ kutie.on('heartbeat', (data) => console.log(data));
 - [Windows 后端](docs/windows-backend.md)
 - [自定义标题栏](docs/custom-titlebar.md)
 - [API 参考](docs/api-reference.md)
+- [打包与引用](docs/packaging.zh.md)
 - [路线图](docs/roadmap.md)
 - [更新日志](CHANGELOG.md)
 

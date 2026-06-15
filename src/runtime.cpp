@@ -45,10 +45,15 @@ void Runtime::LoadAssets() {
         *slash = L'\0';
     }
 
-    const std::vector<std::wstring> candidates = {
-        std::wstring(exe_path) + L"\\..\\..\\sample\\frontend",
-        std::wstring(exe_path) + L"\\frontend",
-    };
+    std::vector<std::wstring> candidates;
+    if (!config_.dev_frontend_path.empty()) {
+        const int length = MultiByteToWideChar(
+            CP_UTF8, 0, config_.dev_frontend_path.c_str(), -1, nullptr, 0);
+        candidates.emplace_back(static_cast<size_t>(length - 1), L'\0');
+        MultiByteToWideChar(
+            CP_UTF8, 0, config_.dev_frontend_path.c_str(), -1, candidates.back().data(), length);
+    }
+    candidates.push_back(std::wstring(exe_path) + L"\\frontend");
 
     for (const auto& candidate : candidates) {
         WCHAR absolute[MAX_PATH];

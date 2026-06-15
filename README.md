@@ -116,6 +116,7 @@ Details: [docs/architecture.md](docs/architecture.md)
 | [windows-backend.md](docs/windows-backend.md) | WebView2 backend |
 | [custom-titlebar.md](docs/custom-titlebar.md) | Custom titlebar guide |
 | [api-reference.md](docs/api-reference.md) | Full API reference |
+| [packaging.md](docs/packaging.md) | `find_package(Kutie)` & vcpkg integration |
 | [roadmap.md](docs/roadmap.md) | Cross-platform roadmap |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 

@@ -16,21 +16,31 @@ Configure via `ShellConfig::entry_url` (default above).
 
 ## Build-time Embedding
 
-`tools/embed_assets.py` scans `sample/frontend/` and generates:
+Each application embeds its own frontend. The Kutie library does **not** ship app assets.
 
-- `build/generated/assets.rc` — Windows resources (`KUTIE_ASSET`)
-- `build/generated/asset_loader.cpp` — `AssetBundle::LoadEmbedded()`
-- `build/generated/asset_ids.h` — numeric resource IDs (starting at 2000)
+`tools/embed_assets.py` scans your `frontend/` directory and generates:
 
-CMake runs the script when frontend files change.
+- `assets.rc` — Windows resources (`KUTIE_ASSET`)
+- `kutie_embedded_assets.cpp` — registers an `AssetBundle` embedded loader at static init
+- `asset_ids.h` — numeric resource IDs (starting at 2000)
+
+Use the CMake helper (in-tree or after `find_package(Kutie)`):
+
+```cmake
+kutie_embed_frontend(myapp "${CMAKE_SOURCE_DIR}/frontend")
+```
+
+Generated code calls `AssetBundle::RegisterEmbeddedLoader()` so resources are loaded from the **executable** module handle.
 
 ## Runtime Loading Order
 
-1. `AssetBundle::LoadEmbedded(GetModuleHandle(nullptr))`
-2. If empty, search for `sample/frontend` or `./frontend` relative to the executable
+1. `AssetBundle::LoadEmbedded(GetModuleHandle(nullptr))` — runs registered loaders
+2. If empty, load from disk:
+   - `Runtime::Config::dev_frontend_path` when set
+   - otherwise `{exe_dir}/frontend`
 3. `AssetBundle::LoadFromDisk(path)`
 
-No code changes between dev and prod.
+No C++ code changes between dev and prod.
 
 ## SPA Fallback
 
@@ -48,4 +58,6 @@ Inferred from file extension when not specified. Override with the third argumen
 
 ## Cross-platform Note
 
-Phase 2+ may add a portable `embedded_assets.cpp` generator. Windows currently uses `.rc` embedding.
+Phase 2+ may add a portable embedded asset generator. Windows currently uses `.rc` embedding.
+
+See also [packaging.md](packaging.md) for `find_package(Kutie)` integration.
