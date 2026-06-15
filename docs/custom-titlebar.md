@@ -1,0 +1,88 @@
+# Custom Titlebar
+
+Kutie supports frameless windows with a frontend-drawn titlebar, similar in UX to [Tauri window customization](https://v2.tauri.app/learn/window-customization/) but with Kutie-specific APIs.
+
+## Enable Frameless Mode
+
+### C++ (startup)
+
+```cpp
+kutie::Runtime::Config cfg;
+cfg.shell.decorations = false;
+cfg.shell.shadow = true;
+```
+
+### Runtime toggle
+
+```javascript
+await kutie.call('shell.set_decorations', { decorations: false });
+```
+
+## HTML Template
+
+```html
+<div class="titlebar" data-kutie-drag-region>
+  <span class="title">My App</span>
+  <div class="controls">
+    <button onclick="kutie.call('shell.minimize')">—</button>
+    <button onclick="kutie.call('shell.toggle_maximize')">□</button>
+    <button onclick="kutie.call('shell.close')">×</button>
+  </div>
+</div>
+```
+
+## Drag Region
+
+| Approach | Usage |
+|---|---|
+| `data-kutie-drag-region` | Auto-bound on DOM ready (recommended) |
+| `data-kutie-drag-region="no-maximize"` | Drag only; disable double-click maximize |
+| `kutie.window.startDrag()` | Manual drag from custom `mousedown` handler |
+
+Double-click on a drag region calls `shell.toggle_maximize` by default.
+
+## CSS Tips
+
+```css
+.titlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body {
+  padding-top: 36px; /* leave room for fixed titlebar */
+}
+
+.titlebar button {
+  -webkit-app-region: no-drag; /* not reliable alone; buttons use click handlers */
+}
+```
+
+## Window Controls
+
+Use built-in IPC handlers:
+
+- `shell.minimize`
+- `shell.maximize` / `shell.restore`
+- `shell.toggle_maximize`
+- `shell.close`
+
+## Differences from Tauri
+
+| Tauri | Kutie |
+|---|---|
+| `decorations: false` in config | `cfg.shell.decorations = false` |
+| `data-tauri-drag-region` | `data-kutie-drag-region` |
+| `window.startDragging()` | `kutie.window.startDrag()` |
+| Permissions / allowlist | No allowlist; handlers registered in C++ |
+
+## Sample
+
+Run `build\sample.exe` and click **Custom titlebar** to switch modes at runtime.
+
+See also [windows-backend.md](windows-backend.md).

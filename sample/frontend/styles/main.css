@@ -1,0 +1,149 @@
+:root {
+  color-scheme: dark;
+  --bg: #121020;
+  --panel: #1d1930;
+  --text: #f4f0ff;
+  --muted: #b6aed6;
+  --accent: #7c6cff;
+  --titlebar: #18142b;
+  --border: rgba(255, 255, 255, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.hidden {
+  display: none;
+}
+
+.titlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 14px;
+  background: var(--titlebar);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  z-index: 1000;
+}
+
+.titlebar-title {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.titlebar-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.titlebar-btn {
+  width: 36px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.titlebar-btn.close:hover {
+  background: #c0392b;
+}
+
+.page-header {
+  padding: 28px 24px 8px;
+}
+
+.page-header.framed {
+  padding-top: 52px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.content {
+  padding: 12px 24px 32px;
+  display: grid;
+  gap: 16px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: var(--muted);
+}
+
+input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #120f22;
+  color: var(--text);
+}
+
+button {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 0;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.output {
+  margin: 12px 0 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #120f22;
+  border: 1px solid var(--border);
+  min-height: 48px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log {
+  max-height: 180px;
+  overflow: auto;
+}
