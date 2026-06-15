@@ -23,11 +23,12 @@ function Get-VcpkgRoot {
 $VcpkgRoot = Get-VcpkgRoot
 $VcpkgExe = Join-Path $VcpkgRoot "vcpkg.exe"
 $ToolchainFile = Join-Path $VcpkgRoot "scripts/buildsystems/vcpkg.cmake"
+$Triplet = "x64-windows-static"
 
 if ($SetupDeps) {
-    Write-Host "Installing manifest dependencies via vcpkg..." -ForegroundColor Cyan
+    Write-Host "Installing manifest dependencies via vcpkg (triplet: $Triplet)..." -ForegroundColor Cyan
     Push-Location $RootDir
-    & $VcpkgExe install --triplet=x64-windows
+    & $VcpkgExe install --triplet=$Triplet
     Pop-Location
     Write-Host "Dependencies installed." -ForegroundColor Green
     return
@@ -62,17 +63,10 @@ call "$vcvars" >nul 2>&1
 if %ERRORLEVEL% neq 0 exit /b 1
 "@ | Out-File -FilePath $buildScript -Encoding ascii
 
-if (-not (Test-Path (Join-Path $BuildDir "build.ninja"))) {
-    @"
-cmake -B "$BuildDir" -S "$RootDir" -G Ninja -DCMAKE_BUILD_TYPE=$Config -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_TOOLCHAIN_FILE="$ToolchainFile"
+@"
+cmake -B "$BuildDir" -S "$RootDir" -G Ninja -DCMAKE_BUILD_TYPE=$Config -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_TOOLCHAIN_FILE="$ToolchainFile" -DVCPKG_TARGET_TRIPLET=$Triplet
 if %ERRORLEVEL% neq 0 exit /b 1
 "@ | Out-File -FilePath $buildScript -Encoding ascii -Append
-} else {
-    @"
-cmake -B "$BuildDir" -S "$RootDir" -G Ninja -DCMAKE_BUILD_TYPE=$Config -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_TOOLCHAIN_FILE="$ToolchainFile"
-if %ERRORLEVEL% neq 0 exit /b 1
-"@ | Out-File -FilePath $buildScript -Encoding ascii -Append
-}
 
 @"
 ninja -C "$BuildDir"

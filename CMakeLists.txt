@@ -4,6 +4,11 @@ project(Kutie VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Static CRT (/MT) for single-exe distribution without VC++ Redistributable.
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
+endif()
+
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
@@ -33,13 +38,19 @@ set(KUTIE_DPI_MANIFEST_CONTENT "<?xml version='1.0' encoding='UTF-8' standalone=
   </compatibility>
 </assembly>")
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows")
-    list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows")
+# Single-exe distribution: static CRT + static WebView2Loader via vcpkg triplet.
+if(NOT DEFINED VCPKG_TARGET_TRIPLET)
+    set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "vcpkg triplet (static CRT and WebView2LoaderStatic)")
+endif()
+
+if(EXISTS "${CMAKE_SOURCE_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
+    list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
 endif()
 
 set(_KUTIE_PACKAGE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}" CACHE INTERNAL "Kutie package root for embed helper")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/KutieEmbedAssets.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/KutieWindows.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/KutieStaticLinking.cmake")
 
 add_subdirectory(src)
 
@@ -57,6 +68,7 @@ if(KUTIE_INSTALL)
     install(FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/KutieEmbedAssets.cmake"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/KutieWindows.cmake"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/KutieStaticLinking.cmake"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/Kutie"
     )
 

@@ -20,8 +20,16 @@ Kutie 以 CMake 包形式提供：
 - Windows（一期）
 - Visual Studio 2019+（C++ 桌面开发）
 - CMake 3.20+
-- vcpkg：`nlohmann-json`、`webview2`
+- vcpkg：`nlohmann-json`、`webview2`，triplet **`x64-windows-static`**
 - Python 3.7+（`kutie_embed_frontend` 需要）
+
+`build.ps1` 与 Kutie CMake 默认使用 `x64-windows-static`，以静态链接 `WebView2LoaderStatic` 与 `/MT`，无需额外 DLL。手动配置时请传入相同 triplet：
+
+```powershell
+cmake -B build -S . `
+  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static
+```
 
 ## 方式一：`find_package(Kutie)`（已安装包）
 
@@ -64,7 +72,12 @@ kutie_apply_windows_manifest(myapp)
 }
 ```
 
-使用 vcpkg toolchain 配置，以便 `KutieConfig.cmake` 内的 `find_dependency` 能解析 WebView2 与 nlohmann-json。
+使用 triplet **`x64-windows-static`** 安装与配置（Kutie 默认）：
+
+```powershell
+vcpkg install --triplet=x64-windows-static
+cmake -B build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static
+```
 
 ## 方式二：Git 子模块 + `add_subdirectory`
 
@@ -139,6 +152,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 |---|---|---|
 | `KUTIE_BUILD_SAMPLES` | ON | 是否构建 `sample.exe` |
 | `KUTIE_INSTALL` | ON | 是否生成 install 规则 |
+
+## 终端用户分发
+
+使用 `x64-windows-static` 构建的 **Release** 可执行文件可单独分发，无需附带：
+
+- `WebView2Loader.dll`
+- Visual C++ 可再发行组件
+
+用户机器需已安装 **WebView2 Runtime**（多数 Windows 11 已预装）。
 
 ## 边界情况
 

@@ -39,9 +39,28 @@ Do not rely on CSS `-webkit-app-region: drag` — use native drag via IPC.
 
 ## Dependencies
 
-- WebView2 SDK via vcpkg (`webview2:x64-windows`)
-- Static link: `WebView2LoaderStatic`
-- System: Windows 10/11 with WebView2 Runtime
+- WebView2 SDK via vcpkg triplet **`x64-windows-static`**
+- Static link: `WebView2LoaderStatic` (enforced at configure time)
+- Static MSVC runtime (`/MT`) — no VC++ Redistributable required
+- System: Windows 10/11 with **WebView2 Runtime** (Evergreen; not bundled in the EXE)
+
+## Single-EXE deployment
+
+Release builds produce one executable with:
+
+- Kutie + nlohmann-json compiled in
+- Frontend assets embedded via `kutie_embed_frontend()`
+- `WebView2LoaderStatic` linked in (no `WebView2Loader.dll`)
+
+The Chromium-based WebView2 Runtime remains a separate system component. Most Windows 11 machines already have it; Windows 10 may need a one-time install.
+
+Verify linkage after build:
+
+```powershell
+dumpbin /dependents build\sample\sample.exe
+```
+
+You should **not** see `WebView2Loader.dll`, `MSVCP140.dll`, or `VCRUNTIME140.dll`.
 
 ## User Data
 

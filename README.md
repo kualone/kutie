@@ -24,7 +24,7 @@ A lightweight C++ desktop framework powered by WebView2. Build modern desktop ap
 ### Prerequisites
 
 - Visual Studio 2019+ (Desktop development with C++)
-- [vcpkg](https://vcpkg.io) with `webview2:x64-windows`
+- [vcpkg](https://vcpkg.io) with triplet `x64-windows-static` (static CRT + `WebView2LoaderStatic`)
 - Python 3.7+
 - PowerShell 5.1+
 
@@ -38,10 +38,10 @@ A lightweight C++ desktop framework powered by WebView2. Build modern desktop ap
 
 ```powershell
 .\build.ps1
-.\build\sample.exe
+.\build\sample\sample.exe
 ```
 
-Output: `build\sample.exe`
+Output: `build\sample\sample.exe` — a single executable (no `WebView2Loader.dll` or VC++ redistributable). End users still need the [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) on Windows 10/11.
 
 ## Project Structure
 

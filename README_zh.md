@@ -24,7 +24,7 @@
 ### 环境要求
 
 - Visual Studio 2019+（C++ 桌面开发）
-- vcpkg + `webview2:x64-windows`
+- vcpkg + triplet `x64-windows-static`（静态 CRT + `WebView2LoaderStatic`）
 - Python 3.7+
 - PowerShell 5.1+
 
@@ -38,8 +38,10 @@
 
 ```powershell
 .\build.ps1
-.\build\sample.exe
+.\build\sample\sample.exe
 ```
+
+产物为单个 `sample.exe`（无需附带 `WebView2Loader.dll` 或 VC++ 运行库）。终端用户仍需在 Windows 10/11 上安装 [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)。
 
 ## 最小示例
 

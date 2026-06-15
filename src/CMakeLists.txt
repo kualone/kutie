@@ -1,20 +1,6 @@
 find_package(nlohmann_json CONFIG REQUIRED)
-
-find_package(unofficial-webview2 CONFIG QUIET)
-if(TARGET unofficial::webview2::webview2)
-    set(KUTIE_WEBVIEW2_TARGET unofficial::webview2::webview2)
-else()
-    set(WEBVIEW2_SEARCH_PATHS
-        "${PROJECT_SOURCE_DIR}/vcpkg_installed/x64-windows"
-        "$ENV{VCPKG_ROOT}/installed/x64-windows"
-    )
-    find_path(WEBVIEW2_INCLUDE_DIR NAMES WebView2.h PATH_SUFFIXES include PATHS ${WEBVIEW2_SEARCH_PATHS})
-    find_library(WEBVIEW2_LIBRARY NAMES WebView2LoaderStatic WebView2Loader.dll.lib
-        PATH_SUFFIXES lib PATHS ${WEBVIEW2_SEARCH_PATHS})
-    if(NOT WEBVIEW2_INCLUDE_DIR OR NOT WEBVIEW2_LIBRARY)
-        message(FATAL_ERROR "WebView2 SDK not found. Install with: vcpkg install webview2:x64-windows")
-    endif()
-endif()
+find_package(unofficial-webview2 CONFIG REQUIRED)
+kutie_require_static_webview2()
 
 add_library(kutie STATIC
     asset_bundle.cpp
@@ -36,30 +22,16 @@ target_include_directories(kutie PUBLIC
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-if(KUTIE_WEBVIEW2_TARGET)
-    target_link_libraries(kutie PUBLIC
-        nlohmann_json::nlohmann_json
-        ${KUTIE_WEBVIEW2_TARGET}
-        shlwapi
-        shell32
-        comdlg32
-        ole32
-        shcore
-        dwmapi
-    )
-else()
-    target_include_directories(kutie PUBLIC "${WEBVIEW2_INCLUDE_DIR}")
-    target_link_libraries(kutie PUBLIC
-        nlohmann_json::nlohmann_json
-        shlwapi
-        shell32
-        comdlg32
-        ole32
-        shcore
-        dwmapi
-        ${WEBVIEW2_LIBRARY}
-    )
-endif()
+target_link_libraries(kutie PUBLIC
+    nlohmann_json::nlohmann_json
+    unofficial::webview2::webview2
+    shlwapi
+    shell32
+    comdlg32
+    ole32
+    shcore
+    dwmapi
+)
 
 if(KUTIE_INSTALL)
     install(TARGETS kutie EXPORT KutieTargets

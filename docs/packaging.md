@@ -20,8 +20,16 @@ Frontend embedding uses **registration callbacks**: generated code registers a l
 - Windows (Phase 1)
 - Visual Studio 2019+ with C++ desktop workload
 - CMake 3.20+
-- vcpkg with `nlohmann-json` and `webview2`
+- vcpkg with `nlohmann-json` and `webview2`, triplet **`x64-windows-static`**
 - Python 3.7+ (for `kutie_embed_frontend`)
+
+`build.ps1` and Kutie CMake defaults use `x64-windows-static` so apps link `WebView2LoaderStatic` and `/MT` without extra DLLs. Pass the same triplet when configuring manually:
+
+```powershell
+cmake -B build -S . `
+  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static
+```
 
 ## Option 1: `find_package(Kutie)` (installed package)
 
@@ -64,7 +72,12 @@ kutie_apply_windows_manifest(myapp)
 }
 ```
 
-Configure with the vcpkg toolchain file so `find_dependency` inside `KutieConfig.cmake` resolves WebView2 and nlohmann-json.
+Install and configure with triplet **`x64-windows-static`** (Kutie default):
+
+```powershell
+vcpkg install --triplet=x64-windows-static
+cmake -B build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static
+```
 
 ## Option 2: Git submodule + `add_subdirectory`
 
@@ -139,6 +152,15 @@ Omit `kutie_embed_frontend()` and place a `frontend/` folder next to your execut
 |---|---|---|
 | `KUTIE_BUILD_SAMPLES` | ON | Build `sample.exe` |
 | `KUTIE_INSTALL` | ON | Generate install rules |
+
+## End-user distribution
+
+Ship **one** `Release` executable built with `x64-windows-static`. No need to bundle:
+
+- `WebView2Loader.dll`
+- Visual C++ Redistributable
+
+Users must have **WebView2 Runtime** installed (preinstalled on most Windows 11 systems).
 
 ## Edge cases
 
