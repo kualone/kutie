@@ -1,3 +1,10 @@
+const THEME_STORAGE_KEY = 'kutie-sample-theme';
+
+const THEME_BACKGROUNDS = {
+  dark: { r: 18, g: 16, b: 32 },
+  light: { r: 245, g: 244, b: 250 },
+};
+
 function logEvent(message) {
   const target = document.getElementById('event-log');
   const line = `[${new Date().toLocaleTimeString()}] ${message}\n`;
@@ -9,15 +16,50 @@ function setOutput(id, value) {
 }
 
 function setTitlebarMode(custom) {
-  document.getElementById('native-chrome').classList.toggle('hidden', custom);
-  document.getElementById('custom-chrome').classList.toggle('hidden', !custom);
+  document.getElementById('titlebar').classList.toggle('hidden', !custom);
+  document.getElementById('native-header').classList.toggle('hidden', custom);
+  document.getElementById('custom-header').classList.toggle('hidden', !custom);
+}
+
+async function syncShellBackground(theme) {
+  if (!window.kutie) {
+    return;
+  }
+  const bg = THEME_BACKGROUNDS[theme === 'light' ? 'light' : 'dark'];
+  await kutie.call('shell.set_background', bg);
+}
+
+async function setTheme(theme) {
+  const next = theme === 'light' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, next);
+  } catch {
+    // Ignore storage failures in restricted contexts.
+  }
+  await syncShellBackground(next);
+  logEvent(`theme=${next}`);
+}
+
+function initTheme() {
+  let saved = 'dark';
+  try {
+    saved = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
+  } catch {
+    saved = 'dark';
+  }
+  setTheme(saved === 'light' ? 'light' : 'dark');
 }
 
 async function init() {
+  initTheme();
+
   if (!window.kutie) {
     setOutput('greet-output', 'Kutie runtime bridge is not available.');
     return;
   }
+
+  await syncShellBackground(document.documentElement.getAttribute('data-theme') || 'dark');
 
   setTitlebarMode(false);
 
@@ -44,6 +86,9 @@ async function init() {
     await kutie.call('shell.set_decorations', { decorations: false });
     setTitlebarMode(true);
   });
+
+  document.getElementById('btn-theme-dark').addEventListener('click', () => setTheme('dark'));
+  document.getElementById('btn-theme-light').addEventListener('click', () => setTheme('light'));
 
   document.querySelectorAll('[data-action]').forEach((button) => {
     button.addEventListener('click', () => {

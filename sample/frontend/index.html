@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,71 +7,82 @@
   <link rel="stylesheet" href="/styles/main.css">
 </head>
 <body>
-  <div id="native-chrome" class="hidden">
-    <header class="page-header">
-      <h1>Kutie Demo</h1>
-      <p>C++ backend + Web frontend on WebView2</p>
-    </header>
-  </div>
-
-  <div id="custom-chrome" class="hidden">
-    <div class="titlebar" data-kutie-drag-region>
+  <div id="app-root">
+    <header id="titlebar" class="titlebar hidden" data-kutie-drag-region>
       <div class="titlebar-title">Kutie Demo</div>
       <div class="titlebar-controls">
-        <button type="button" class="titlebar-btn" data-action="minimize" title="Minimize">—</button>
-        <button type="button" class="titlebar-btn" data-action="maximize" title="Maximize">□</button>
-        <button type="button" class="titlebar-btn close" data-action="close" title="Close">×</button>
+        <button type="button" class="titlebar-btn" data-action="minimize" title="Minimize" aria-label="Minimize">
+          <svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="5.5" width="10" height="1" fill="currentColor"/></svg>
+        </button>
+        <button type="button" class="titlebar-btn" data-action="maximize" title="Maximize" aria-label="Maximize">
+          <svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1"/></svg>
+        </button>
+        <button type="button" class="titlebar-btn close" data-action="close" title="Close" aria-label="Close">
+          <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1 1 L11 11 M11 1 L1 11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        </button>
       </div>
-    </div>
-    <header class="page-header framed">
-      <h1>Custom Titlebar Mode</h1>
-      <p>Drag the top bar to move the window.</p>
     </header>
+
+    <div class="app-scroll">
+      <header id="native-header" class="page-header">
+        <h1>Kutie Demo</h1>
+        <p>C++ backend + Web frontend on WebView2</p>
+      </header>
+
+      <header id="custom-header" class="page-header hidden">
+        <h1>Custom Titlebar Mode</h1>
+        <p>Drag the top bar to move the window.</p>
+      </header>
+
+      <main class="content">
+        <section class="card">
+          <h2>IPC</h2>
+          <label>
+            Name
+            <input id="name-input" type="text" value="Kutie">
+          </label>
+          <button id="btn-greet" type="button">Call greet</button>
+          <pre id="greet-output" class="output"></pre>
+        </section>
+
+        <section class="card">
+          <h2>Window</h2>
+          <div class="row">
+            <button id="btn-minimize" type="button">Minimize</button>
+            <button id="btn-maximize" type="button">Maximize</button>
+            <button id="btn-restore" type="button">Restore</button>
+          </div>
+          <div class="row">
+            <button id="btn-native-titlebar" type="button">Native titlebar</button>
+            <button id="btn-custom-titlebar" type="button">Custom titlebar</button>
+          </div>
+          <div class="row">
+            <button id="btn-theme-dark" type="button">Dark mode</button>
+            <button id="btn-theme-light" type="button">Light mode</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>System</h2>
+          <div class="row">
+            <button id="btn-open-file" type="button">Open file</button>
+            <button id="btn-save-file" type="button">Save file</button>
+            <button id="btn-pick-folder" type="button">Pick folder</button>
+          </div>
+          <div class="row">
+            <button id="btn-clipboard-read" type="button">Read clipboard</button>
+            <button id="btn-clipboard-write" type="button">Write clipboard</button>
+          </div>
+          <pre id="system-output" class="output"></pre>
+        </section>
+
+        <section class="card">
+          <h2>Events</h2>
+          <pre id="event-log" class="output log"></pre>
+        </section>
+      </main>
+    </div>
   </div>
-
-  <main class="content">
-    <section class="card">
-      <h2>IPC</h2>
-      <label>
-        Name
-        <input id="name-input" type="text" value="Kutie">
-      </label>
-      <button id="btn-greet" type="button">Call greet</button>
-      <pre id="greet-output" class="output"></pre>
-    </section>
-
-    <section class="card">
-      <h2>Window</h2>
-      <div class="row">
-        <button id="btn-minimize" type="button">Minimize</button>
-        <button id="btn-maximize" type="button">Maximize</button>
-        <button id="btn-restore" type="button">Restore</button>
-      </div>
-      <div class="row">
-        <button id="btn-native-titlebar" type="button">Native titlebar</button>
-        <button id="btn-custom-titlebar" type="button">Custom titlebar</button>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>System</h2>
-      <div class="row">
-        <button id="btn-open-file" type="button">Open file</button>
-        <button id="btn-save-file" type="button">Save file</button>
-        <button id="btn-pick-folder" type="button">Pick folder</button>
-      </div>
-      <div class="row">
-        <button id="btn-clipboard-read" type="button">Read clipboard</button>
-        <button id="btn-clipboard-write" type="button">Write clipboard</button>
-      </div>
-      <pre id="system-output" class="output"></pre>
-    </section>
-
-    <section class="card">
-      <h2>Events</h2>
-      <pre id="event-log" class="output log"></pre>
-    </section>
-  </main>
 
   <script src="/scripts/app.js"></script>
 </body>

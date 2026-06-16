@@ -58,6 +58,7 @@ bundle.Empty();
 | `SetTitle` / `SetSize` / `SetPosition` | Geometry |
 | `SetAlwaysOnTop` / `SetResizable` | Window flags |
 | `SetDecorations(bool)` | Native vs frameless |
+| `SetBackground(Color)` | WebView2 default color, frameless gutter, Win11 DWM border |
 | `Minimize` / `Maximize` / `Restore` / `ToggleMaximize` | State |
 | `StartDrag()` | Native titlebar drag |
 | `ToggleDevTools()` | DevTools window |

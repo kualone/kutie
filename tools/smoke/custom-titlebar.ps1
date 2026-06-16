@@ -59,10 +59,10 @@ try {
         throw "sample.exe crashed after switching to custom titlebar"
     }
 
-    # Titlebar close button text is "×" after custom mode is shown.
-    $closeBtn = Find-InProcess $proc ([char]0x00D7)
+    # Titlebar close button uses aria-label="Close" after custom mode is shown.
+    $closeBtn = Find-InProcess $proc 'Close'
     if (-not $closeBtn) {
-        throw "Titlebar close button (×) not found after custom titlebar mode"
+        throw "Titlebar close button (Close) not found after custom titlebar mode"
     }
 
     Invoke-UiButton $closeBtn

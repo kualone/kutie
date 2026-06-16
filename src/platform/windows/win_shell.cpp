@@ -258,6 +258,19 @@ void WinShell::SetDecorations(bool decorations) {
     ScheduleApplyWindowStyle();
 }
 
+void WinShell::SetBackground(const Color& background) {
+    config_.background = background;
+    ApplyShellBackground();
+}
+
+void WinShell::ApplyShellBackground() {
+    ApplyWebViewBackground();
+    if (hwnd_) {
+        platform::windows::ApplyFramelessDwmChrome(hwnd_, config_);
+        InvalidateRect(hwnd_, nullptr, TRUE);
+    }
+}
+
 void WinShell::SetIcon(void* icon_handle) {
     if (hwnd_ && icon_handle) {
         SendMessageW(hwnd_, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(icon_handle));

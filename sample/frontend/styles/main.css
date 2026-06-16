@@ -1,4 +1,5 @@
-:root {
+:root,
+[data-theme="dark"] {
   color-scheme: dark;
   --bg: #121020;
   --panel: #1d1930;
@@ -7,6 +8,29 @@
   --accent: #7c6cff;
   --titlebar: #18142b;
   --border: rgba(255, 255, 255, 0.08);
+  --input-bg: #120f22;
+  --output-bg: #120f22;
+  --titlebar-btn-hover: rgba(255, 255, 255, 0.08);
+  --titlebar-btn-active: rgba(255, 255, 255, 0.14);
+  --titlebar-close-hover: #e81123;
+  --titlebar-close-active: #bf0a1d;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f4fa;
+  --panel: #ffffff;
+  --text: #1a1528;
+  --muted: #5c5470;
+  --accent: #6b5ce7;
+  --titlebar: #ebe8f4;
+  --border: rgba(26, 21, 40, 0.12);
+  --input-bg: #ffffff;
+  --output-bg: #f0eef8;
+  --titlebar-btn-hover: rgba(0, 0, 0, 0.06);
+  --titlebar-btn-active: rgba(0, 0, 0, 0.1);
+  --titlebar-close-hover: #e81123;
+  --titlebar-close-active: #bf0a1d;
 }
 
 * {
@@ -15,10 +39,17 @@
 
 html, body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
   background: var(--bg);
   color: var(--text);
   font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+#app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .hidden {
@@ -26,51 +57,75 @@ html, body {
 }
 
 .titlebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 36px;
+  flex: 0 0 36px;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
-  padding: 0 8px 0 14px;
+  padding-left: 14px;
   background: var(--titlebar);
   border-bottom: 1px solid var(--border);
   user-select: none;
-  z-index: 1000;
 }
 
 .titlebar-title {
+  display: flex;
+  align-items: center;
   font-size: 13px;
   color: var(--muted);
 }
 
 .titlebar-controls {
   display: flex;
-  gap: 6px;
+  height: 100%;
 }
 
 .titlebar-btn {
-  width: 36px;
-  height: 24px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  width: 46px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
   background: transparent;
   color: var(--text);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.titlebar-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.titlebar-btn:hover {
+  background: var(--titlebar-btn-hover);
+}
+
+.titlebar-btn:active {
+  background: var(--titlebar-btn-active);
 }
 
 .titlebar-btn.close:hover {
-  background: #c0392b;
+  background: var(--titlebar-close-hover);
+  color: #ffffff;
+}
+
+.titlebar-btn.close:active {
+  background: var(--titlebar-close-active);
+  color: #ffffff;
+}
+
+.app-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .page-header {
   padding: 28px 24px 8px;
-}
-
-.page-header.framed {
-  padding-top: 52px;
 }
 
 .page-header h1 {
@@ -112,17 +167,21 @@ input {
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: #120f22;
+  background: var(--input-bg);
   color: var(--text);
 }
 
-button {
+button:not(.titlebar-btn) {
   padding: 10px 14px;
   border-radius: 8px;
   border: 0;
   background: var(--accent);
   color: white;
   cursor: pointer;
+}
+
+button:not(.titlebar-btn):hover {
+  filter: brightness(1.08);
 }
 
 .row {
@@ -136,7 +195,7 @@ button {
   margin: 12px 0 0;
   padding: 12px;
   border-radius: 8px;
-  background: #120f22;
+  background: var(--output-bg);
   border: 1px solid var(--border);
   min-height: 48px;
   white-space: pre-wrap;

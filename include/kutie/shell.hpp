@@ -43,6 +43,7 @@ public:
     virtual void SetAlwaysOnTop(bool on_top) = 0;
     virtual void SetResizable(bool resizable) = 0;
     virtual void SetDecorations(bool decorations) = 0;
+    virtual void SetBackground(const Color& background) = 0;
     virtual void SetIcon(void* icon_handle) = 0;
     virtual void Minimize() = 0;
     virtual void Maximize() = 0;
