@@ -17,7 +17,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     config.shell.center = true;
     config.shell.devtools = true;
     config.shell.decorations = true;
-    config.shell.background = kutie::Color{18, 16, 32};
 
     kutie::Runtime app(config);
     auto& ipc = app.ipc();

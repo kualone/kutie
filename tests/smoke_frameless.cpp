@@ -11,7 +11,6 @@ using kutie::platform::windows::ApplyPartialNcCalcRect;
 using kutie::platform::windows::BuildDecorationStyle;
 using kutie::platform::windows::MergeWindowStyle;
 using kutie::platform::windows::PartialDecorationTopOffset;
-using kutie::platform::windows::ShellBorderColor;
 
 int g_failures = 0;
 
@@ -71,15 +70,6 @@ void TestApplyPartialNcCalcRect() {
     Expect(maximized.top == 8, "maximized negative top applies border height offset");
 }
 
-void TestShellBorderColor() {
-    ShellConfig config{};
-    config.background = kutie::Color{18, 16, 32, 255};
-    const COLORREF border = ShellBorderColor(config);
-    Expect(GetRValue(border) == 18, "border color R matches shell background");
-    Expect(GetGValue(border) == 16, "border color G matches shell background");
-    Expect(GetBValue(border) == 32, "border color B matches shell background");
-}
-
 void TestAdjustMinMaxInfoForWorkArea() {
     MINMAXINFO minmax{};
     const RECT monitor{0, 0, 1920, 1080};
@@ -103,7 +93,6 @@ int main() {
     TestMergeWindowStylePreservesVisible();
     TestPartialDecorationTopOffset();
     TestApplyPartialNcCalcRect();
-    TestShellBorderColor();
     TestAdjustMinMaxInfoForWorkArea();
 
     if (g_failures == 0) {

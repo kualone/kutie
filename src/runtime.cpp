@@ -7,36 +7,9 @@
 
 #include <nlohmann/json.hpp>
 
-#include <chrono>
 #include <thread>
 
 namespace kutie {
-
-namespace {
-
-Color ParseBackgroundPayload(const nlohmann::json& payload) {
-    Color color{};
-    if (payload.contains("hex")) {
-        std::string hex = payload["hex"].get<std::string>();
-        if (!hex.empty() && hex.front() == '#') {
-            hex.erase(hex.begin());
-        }
-        if (hex.size() == 6) {
-            color.r = static_cast<std::uint8_t>(std::stoul(hex.substr(0, 2), nullptr, 16));
-            color.g = static_cast<std::uint8_t>(std::stoul(hex.substr(2, 2), nullptr, 16));
-            color.b = static_cast<std::uint8_t>(std::stoul(hex.substr(4, 2), nullptr, 16));
-            color.a = 255;
-            return color;
-        }
-    }
-    color.r = payload.value("r", color.r);
-    color.g = payload.value("g", color.g);
-    color.b = payload.value("b", color.b);
-    color.a = payload.value("a", static_cast<int>(color.a));
-    return color;
-}
-
-} // namespace
 
 Runtime::Runtime(const Config& config)
     : config_(config) {
@@ -131,10 +104,6 @@ void Runtime::RegisterBuiltInHandlers() {
     });
     ipc().RegisterHandler("shell.set_decorations", [this](const nlohmann::json& payload) {
         shell().SetDecorations(payload.value("decorations", true));
-        return nlohmann::json{{"ok", true}};
-    });
-    ipc().RegisterHandler("shell.set_background", [this](const nlohmann::json& payload) {
-        shell().SetBackground(ParseBackgroundPayload(payload));
         return nlohmann::json{{"ok", true}};
     });
 }

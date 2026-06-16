@@ -57,11 +57,11 @@ Drag uses `WM_SYSCOMMAND SC_DRAGMOVE` on the top-level HWND (Qt-style), not CSS 
 
 **Win10 note:** the top border may not support native drag-resize. Left, right, bottom, and corners work normally.
 
-Keep `shell.background` in sync with your page `--bg` so Win11 rounded corners do not show a color seam.
+Page background and theme are controlled entirely by frontend CSS.
 
 ## Shadow and DWM
 
-`DwmExtendFrameIntoClientArea` extends the top frame by 2 px so DWM blends with your custom titlebar. `DWMWA_BORDER_COLOR` is set to `shell.background` so the system border matches your page. Runtime switch to custom titlebar does not require recreating the window.
+`DwmExtendFrameIntoClientArea` extends the top frame by 2 px so DWM blends with your custom titlebar. Win11 resize border color follows the system default. Runtime switch to custom titlebar does not require recreating the window.
 
 Maximize respects the monitor work area (`WM_GETMINMAXINFO`) so the taskbar stays visible.
 

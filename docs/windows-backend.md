@@ -8,11 +8,10 @@ Kutie Phase 1 implements `IShell` as `WinShell` using Win32 and WebView2.
 2. Create Win32 window (hidden until navigation completes)
 3. `CreateCoreWebView2EnvironmentWithOptions`
 4. `CreateCoreWebView2Controller`
-5. Set WebView2 default background color
-6. Map virtual host `assets.kutie` + install `WebResourceRequested` filter
-7. Inject IPC bootstrap script (`AddScriptToExecuteOnDocumentCreated`)
-8. Navigate to `entry_url`
-9. Show window after first navigation completes
+5. Map virtual host `assets.kutie` + install `WebResourceRequested` filter
+6. Inject IPC bootstrap script (`AddScriptToExecuteOnDocumentCreated`)
+7. Navigate to `entry_url`
+8. Show window after first navigation completes
 
 ## Resource Interception
 
@@ -27,7 +26,7 @@ When `decorations = false` (Saucer-style partial decoration):
 
 - Style: `WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME` when `resizable = true` (same as Saucer `decoration::partial`)
 - `WM_NCCALCSIZE`: inset left/right/bottom by `WINDOWINFO` borders; when maximized with a negative top rect, add a top offset equal to the border height
-- `DwmExtendFrameIntoClientArea`: top margin 2 px for titlebar blend; `DWMWA_BORDER_COLOR` matches `shell.background`
+- `DwmExtendFrameIntoClientArea`: top margin 2 px for titlebar blend; resize border color uses the system default
 - Drag: `shell.start_drag` → `WM_SYSCOMMAND SC_DRAGMOVE`
 - Resize: OS native border drag via `WS_THICKFRAME` (no IPC required)
 - **Win10:** top-edge native resize may be unavailable (Saucer documents the same trade-off)

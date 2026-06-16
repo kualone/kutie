@@ -25,7 +25,6 @@ public:
     void SetAlwaysOnTop(bool on_top) override;
     void SetResizable(bool resizable) override;
     void SetDecorations(bool decorations) override;
-    void SetBackground(const Color& background) override;
     void SetIcon(void* icon_handle) override;
     void Minimize() override;
     void Maximize() override;
@@ -59,8 +58,6 @@ private:
     void ApplyWindowStyle();
     void ScheduleApplyWindowStyle();
     void UpdateWebViewBounds();
-    void ApplyWebViewBackground();
-    void ApplyShellBackground();
     void ConfigureResourceServing();
     void ConfigureIpcBridge();
     void ShowWhenReady();

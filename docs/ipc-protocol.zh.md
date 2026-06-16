@@ -80,7 +80,6 @@ Kutie 通过 WebView2 `postMessage` 传输带版本号的 JSON 信封。
 | `shell.start_drag` | — | 开始原生拖拽（`WM_SYSCOMMAND SC_DRAGMOVE`） |
 | `shell.set_title` | `{ "title": "..." }` | 设置标题 |
 | `shell.set_decorations` | `{ "decorations": bool }` | 切换原生标题栏 |
-| `shell.set_background` | `{ "r", "g", "b" }` 或 `{ "hex": "#rrggbb" }` | 更新窗口/WebView2 背景色及无边框 DWM 边框 |
 
 ## C++ 注册
 

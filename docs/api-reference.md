@@ -13,7 +13,6 @@ cfg.shell.always_on_top = false;
 cfg.shell.devtools = true;
 cfg.shell.decorations = true;
 cfg.shell.shadow = true;
-cfg.shell.background = kutie::Color{18, 16, 32};
 cfg.shell.entry_url = "https://assets.kutie/index.html";
 
 kutie::Runtime app(cfg);
@@ -58,7 +57,6 @@ bundle.Empty();
 | `SetTitle` / `SetSize` / `SetPosition` | Geometry |
 | `SetAlwaysOnTop` / `SetResizable` | Window flags |
 | `SetDecorations(bool)` | Native vs partial decoration (custom titlebar) |
-| `SetBackground(Color)` | WebView2 default color and DWM border color |
 | `Minimize` / `Maximize` / `Restore` / `ToggleMaximize` | State |
 | `StartDrag()` | Native drag via `WM_SYSCOMMAND SC_DRAGMOVE` |
 | `ToggleDevTools()` | DevTools window |
@@ -99,5 +97,4 @@ await kutie.window.startDrag();
 | `devtools` | `false` | F12 DevTools |
 | `decorations` | `true` | Native titlebar |
 | `shadow` | `true` | DWM shadow and rounded corners when using partial decoration |
-| `background` | dark purple | Launch background |
 | `entry_url` | `https://assets.kutie/index.html` | Initial navigation |

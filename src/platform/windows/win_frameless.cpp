@@ -2,10 +2,6 @@
 
 #include <dwmapi.h>
 
-#ifndef DWMWA_BORDER_COLOR
-#define DWMWA_BORDER_COLOR 34
-#endif
-
 namespace kutie::platform::windows {
 
 DWORD BuildDecorationStyle(const ShellConfig& config) {
@@ -23,10 +19,6 @@ DWORD MergeWindowStyle(DWORD current_style, const ShellConfig& config) {
     return style;
 }
 
-COLORREF ShellBorderColor(const ShellConfig& config) {
-    return RGB(config.background.r, config.background.g, config.background.b);
-}
-
 void ApplyFramelessDwmChrome(HWND hwnd, const ShellConfig& config) {
     if (!hwnd) {
         return;
@@ -37,9 +29,6 @@ void ApplyFramelessDwmChrome(HWND hwnd, const ShellConfig& config) {
         DwmExtendFrameIntoClientArea(hwnd, &margins);
         return;
     }
-
-    const COLORREF border = ShellBorderColor(config);
-    DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &border, sizeof(border));
 
     // Partial decoration: extend top frame so DWM blends with the custom titlebar.
     const MARGINS margins{0, 0, 2, 0};

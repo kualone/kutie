@@ -80,7 +80,6 @@ Registered by `Runtime`:
 | `shell.start_drag` | — | Start native drag (`WM_SYSCOMMAND SC_DRAGMOVE`) |
 | `shell.set_title` | `{ "title": "..." }` | Set title |
 | `shell.set_decorations` | `{ "decorations": bool }` | Toggle native titlebar |
-| `shell.set_background` | `{ "r", "g", "b" }` or `{ "hex": "#rrggbb" }` | Update window/WebView2 background and frameless DWM border |
 
 ## C++ Registration
 

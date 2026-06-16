@@ -15,7 +15,6 @@ constexpr WPARAM kSysCommandDragMove = 0xF012;
 DWORD BuildDecorationStyle(const ShellConfig& config);
 DWORD MergeWindowStyle(DWORD current_style, const ShellConfig& config);
 
-COLORREF ShellBorderColor(const ShellConfig& config);
 void ApplyFramelessDwmChrome(HWND hwnd, const ShellConfig& config);
 void AdjustMinMaxInfoForWorkArea(MINMAXINFO* minmax, const RECT& work_area, const RECT& monitor_area);
 

@@ -57,11 +57,11 @@ await kutie.call('shell.set_decorations', { decorations: false });
 
 **Win10 说明：** 顶部边框可能无法原生拖拽缩放。左、右、底边与四角正常。
 
-请将 `shell.background` 与页面 `--bg` 同步，避免 Win11 圆角处出现色差。
+页面背景与主题完全由前端 CSS 控制。
 
 ## 阴影与 DWM
 
-`DwmExtendFrameIntoClientArea` 将顶框延伸 2 px，使 DWM 与自定义标题栏融合。`DWMWA_BORDER_COLOR` 设为 `shell.background`，使系统边框与页面一致。运行时切换自定义标题栏无需重建窗口。
+`DwmExtendFrameIntoClientArea` 将顶框延伸 2 px，使 DWM 与自定义标题栏融合。Win11 缩放边框颜色跟随系统默认。运行时切换自定义标题栏无需重建窗口。
 
 最大化时通过 `WM_GETMINMAXINFO` 限制在工作区内，不遮挡任务栏。
 

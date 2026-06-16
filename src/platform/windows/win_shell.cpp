@@ -118,7 +118,7 @@ void WinShell::RegisterWindowClass() {
     window_class.lpfnWndProc = WindowProc;
     window_class.hInstance = GetModuleHandleW(nullptr);
     window_class.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
-    window_class.hbrBackground = CreateSolidBrush(RGB(18, 16, 32));
+    window_class.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     window_class.lpszClassName = kWindowClassName;
     RegisterClassExW(&window_class);
 }
@@ -169,7 +169,7 @@ int WinShell::Run() {
         return 1;
     }
 
-    // Show immediately so users see the themed background while WebView2 initializes.
+    // Show immediately while WebView2 initializes.
     ShowWindow(hwnd_, SW_SHOW);
     UpdateWindow(hwnd_);
     visible_requested_ = true;
@@ -263,19 +263,6 @@ void WinShell::SetResizable(bool resizable) {
 void WinShell::SetDecorations(bool decorations) {
     config_.decorations = decorations;
     ScheduleApplyWindowStyle();
-}
-
-void WinShell::SetBackground(const Color& background) {
-    config_.background = background;
-    ApplyShellBackground();
-}
-
-void WinShell::ApplyShellBackground() {
-    ApplyWebViewBackground();
-    if (hwnd_) {
-        platform::windows::ApplyFramelessDwmChrome(hwnd_, config_);
-        InvalidateRect(hwnd_, nullptr, TRUE);
-    }
 }
 
 void WinShell::SetIcon(void* icon_handle) {
@@ -441,7 +428,6 @@ bool WinShell::InitializeWebView() {
 
                             UpdateWebViewBounds();
 
-                            ApplyWebViewBackground();
                             ConfigureResourceServing();
                             ConfigureIpcBridge();
 
@@ -508,22 +494,6 @@ void WinShell::UpdateWebViewBounds() {
     RECT client{};
     GetClientRect(hwnd_, &client);
     controller_->put_Bounds(client);
-}
-
-void WinShell::ApplyWebViewBackground() {
-    if (!controller_) {
-        return;
-    }
-
-    ComPtr<ICoreWebView2Controller2> controller2;
-    if (SUCCEEDED(controller_->QueryInterface(IID_PPV_ARGS(&controller2)))) {
-        COREWEBVIEW2_COLOR color{};
-        color.A = config_.background.a;
-        color.R = config_.background.r;
-        color.G = config_.background.g;
-        color.B = config_.background.b;
-        controller2->put_DefaultBackgroundColor(color);
-    }
 }
 
 void WinShell::ConfigureResourceServing() {

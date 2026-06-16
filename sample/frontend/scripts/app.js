@@ -1,10 +1,5 @@
 const THEME_STORAGE_KEY = 'kutie-sample-theme';
 
-const THEME_BACKGROUNDS = {
-  dark: { r: 18, g: 16, b: 32 },
-  light: { r: 255, g: 255, b: 255 },
-};
-
 function logEvent(message) {
   const target = document.getElementById('event-log');
   const line = `[${new Date().toLocaleTimeString()}] ${message}\n`;
@@ -21,15 +16,7 @@ function setTitlebarMode(custom) {
   document.getElementById('custom-header').classList.toggle('hidden', !custom);
 }
 
-async function syncShellBackground(theme) {
-  if (!window.kutie) {
-    return;
-  }
-  const bg = THEME_BACKGROUNDS[theme === 'light' ? 'light' : 'dark'];
-  await kutie.call('shell.set_background', bg);
-}
-
-async function setTheme(theme) {
+function setTheme(theme) {
   const next = theme === 'light' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   try {
@@ -37,7 +24,6 @@ async function setTheme(theme) {
   } catch {
     // Ignore storage failures in restricted contexts.
   }
-  await syncShellBackground(next);
   logEvent(`theme=${next}`);
 }
 
@@ -58,8 +44,6 @@ async function init() {
     setOutput('greet-output', 'Kutie runtime bridge is not available.');
     return;
   }
-
-  await syncShellBackground(document.documentElement.getAttribute('data-theme') || 'dark');
 
   setTitlebarMode(false);
 
