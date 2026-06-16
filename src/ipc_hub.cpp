@@ -172,14 +172,48 @@ std::string IpcHub::ClientBootstrapScript() {
             }
             node.__kutieDragBound = true;
             const allowMaximize = node.getAttribute('data-kutie-drag-region') !== 'no-maximize';
+            const interactiveSelector = 'button, a, input, select, textarea, [data-kutie-no-drag]';
+            function isInteractiveTarget(event) {
+                return event.target && event.target.closest(interactiveSelector);
+            }
             node.addEventListener('mousedown', function(event) {
-                if (event.button !== 0) {
+                if (event.button !== 0 || isInteractiveTarget(event)) {
                     return;
                 }
-                kutie.window.startDrag();
+                const startX = event.clientX;
+                const startY = event.clientY;
+                let dragStarted = false;
+                const dragThreshold = 4;
+
+                function cleanup() {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                }
+
+                function onMove(e) {
+                    if (dragStarted) {
+                        return;
+                    }
+                    if (Math.abs(e.clientX - startX) >= dragThreshold ||
+                        Math.abs(e.clientY - startY) >= dragThreshold) {
+                        dragStarted = true;
+                        cleanup();
+                        kutie.window.startDrag();
+                    }
+                }
+
+                function onUp() {
+                    cleanup();
+                }
+
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp, { once: true });
             });
             if (allowMaximize) {
-                node.addEventListener('dblclick', function() {
+                node.addEventListener('dblclick', function(event) {
+                    if (isInteractiveTarget(event)) {
+                        return;
+                    }
                     kutie.call('shell.toggle_maximize');
                 });
             }

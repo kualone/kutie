@@ -37,9 +37,12 @@ await kutie.call('shell.set_decorations', { decorations: false });
 |---|---|
 | `data-kutie-drag-region` | Auto-bound on DOM ready (recommended) |
 | `data-kutie-drag-region="no-maximize"` | Drag only; disable double-click maximize |
+| `data-kutie-no-drag` | Opt out of drag on a child inside a drag region |
 | `kutie.window.startDrag()` | Manual drag from custom `mousedown` handler |
 
-Double-click on a drag region calls `shell.toggle_maximize` by default.
+Clicks on `button`, `a`, `input`, `select`, and `textarea` inside a drag region do **not** start a drag. Double-click on the drag region (outside interactive children) toggles maximize. Drag starts once the pointer moves about 4 px so double-click is not swallowed.
+
+Frameless mode keeps an 8 px (DPI-scaled) resize border via native hit-testing; the WebView client area fills the rest.
 
 ## CSS Tips
 

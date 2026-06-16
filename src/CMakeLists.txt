@@ -9,6 +9,7 @@ add_library(kutie STATIC
     platform_services.cpp
     platform/shell_factory.cpp
     platform/windows/win_shell.cpp
+    platform/windows/win_frameless.cpp
     platform/windows/win_dialog.cpp
     platform/windows/win_dpi.cpp
     platform/windows/win_string_util.cpp

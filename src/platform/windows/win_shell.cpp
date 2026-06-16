@@ -1,6 +1,7 @@
 #include "win_shell.hpp"
 
 #include "win_dpi.hpp"
+#include "win_frameless.hpp"
 #include "win_string_util.hpp"
 
 #include <dwmapi.h>
@@ -21,6 +22,13 @@ namespace {
 constexpr wchar_t kWindowClassName[] = L"KutieShellWindow";
 constexpr wchar_t kVirtualHost[] = L"assets.kutie";
 constexpr char kVirtualOrigin[] = "https://assets.kutie";
+
+constexpr UINT WM_KUTIE_APPLY_STYLE = WM_USER + 1;
+constexpr UINT WM_KUTIE_START_DRAG = WM_USER + 2;
+constexpr UINT WM_KUTIE_MINIMIZE = WM_USER + 3;
+constexpr UINT WM_KUTIE_MAXIMIZE = WM_USER + 4;
+constexpr UINT WM_KUTIE_RESTORE = WM_USER + 5;
+constexpr UINT WM_KUTIE_TOGGLE_MAXIMIZE = WM_USER + 6;
 
 std::wstring MakeFallbackFolder(AssetBundle& assets) {
     WCHAR temp_dir[MAX_PATH];
@@ -241,13 +249,13 @@ void WinShell::SetAlwaysOnTop(bool on_top) {
 
 void WinShell::SetResizable(bool resizable) {
     config_.resizable = resizable;
-    ApplyWindowStyle();
+    ScheduleApplyWindowStyle();
 }
 
 void WinShell::SetDecorations(bool decorations) {
     config_.decorations = decorations;
     config_.title_bar_mode = decorations ? TitleBarMode::Native : TitleBarMode::Hidden;
-    ApplyWindowStyle();
+    ScheduleApplyWindowStyle();
 }
 
 void WinShell::SetIcon(void* icon_handle) {
@@ -259,27 +267,25 @@ void WinShell::SetIcon(void* icon_handle) {
 
 void WinShell::Minimize() {
     if (hwnd_) {
-        ShowWindow(hwnd_, SW_MINIMIZE);
+        PostMessageW(hwnd_, WM_KUTIE_MINIMIZE, 0, 0);
     }
 }
 
 void WinShell::Maximize() {
     if (hwnd_) {
-        ShowWindow(hwnd_, SW_MAXIMIZE);
+        PostMessageW(hwnd_, WM_KUTIE_MAXIMIZE, 0, 0);
     }
 }
 
 void WinShell::Restore() {
     if (hwnd_) {
-        ShowWindow(hwnd_, SW_RESTORE);
+        PostMessageW(hwnd_, WM_KUTIE_RESTORE, 0, 0);
     }
 }
 
 void WinShell::ToggleMaximize() {
-    if (IsMaximized()) {
-        Restore();
-    } else {
-        Maximize();
+    if (hwnd_) {
+        PostMessageW(hwnd_, WM_KUTIE_TOGGLE_MAXIMIZE, 0, 0);
     }
 }
 
@@ -287,8 +293,7 @@ void WinShell::StartDrag() {
     if (!hwnd_) {
         return;
     }
-    ReleaseCapture();
-    SendMessageW(hwnd_, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+    PostMessageW(hwnd_, WM_KUTIE_START_DRAG, 0, 0);
 }
 
 void WinShell::ToggleDevTools() {
@@ -343,15 +348,7 @@ bool WinShell::CreateWindowHandle() {
     const int width = MulDiv(config_.width, dpi, 96);
     const int height = MulDiv(config_.height, dpi, 96);
 
-    DWORD style = WS_OVERLAPPEDWINDOW;
-    if (!config_.decorations) {
-        style = WS_OVERLAPPED | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
-        if (!config_.resizable) {
-            style &= ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
-        }
-    } else if (!config_.resizable) {
-        style &= ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
-    }
+    DWORD style = WS_OVERLAPPED | platform::windows::BuildDecorationStyle(config_);
 
     DWORD ex_style = config_.always_on_top ? WS_EX_TOPMOST : 0;
     RECT rect{0, 0, width, height};
@@ -474,21 +471,36 @@ bool WinShell::InitializeWebView() {
     return SUCCEEDED(hr);
 }
 
+void WinShell::ScheduleApplyWindowStyle() {
+    if (!hwnd_) {
+        return;
+    }
+    // Defer style changes out of the WebView2 IPC callback stack.
+    PostMessageW(hwnd_, WM_KUTIE_APPLY_STYLE, 0, 0);
+}
+
 void WinShell::ApplyWindowStyle() {
     if (!hwnd_) {
         return;
     }
 
-    DWORD style = WS_OVERLAPPEDWINDOW;
-    if (!config_.decorations) {
-        style = WS_OVERLAPPED | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
-    }
-    if (!config_.resizable) {
-        style &= ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
-    }
+    DWORD style = static_cast<DWORD>(GetWindowLongPtrW(hwnd_, GWL_STYLE));
+    style = platform::windows::MergeWindowStyle(style, config_);
+    SetWindowLongPtrW(hwnd_, GWL_STYLE, static_cast<LONG_PTR>(style));
+    SetWindowPos(
+        hwnd_,
+        nullptr,
+        0,
+        0,
+        0,
+        0,
+        SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
-    SetWindowLongW(hwnd_, GWL_STYLE, style);
-    SetWindowPos(hwnd_, nullptr, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER);
+    if (config_.shadow) {
+        const DWMNCRENDERINGPOLICY policy =
+            config_.decorations ? DWMNCRP_USEWINDOWSTYLE : DWMNCRP_ENABLED;
+        DwmSetWindowAttribute(hwnd_, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
+    }
 }
 
 void WinShell::ApplyWebViewBackground() {
@@ -733,15 +745,46 @@ LRESULT CALLBACK WinShell::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LP
         }
         return 0;
 
-    case WM_NCHITTEST:
-        if (!shell->config_.decorations) {
-            LRESULT hit = DefWindowProcW(hwnd, message, wparam, lparam);
-            if (hit == HTCLIENT) {
-                return HTCLIENT;
-            }
-            return hit;
+    case WM_NCCALCSIZE:
+        if (!shell->config_.decorations && wparam) {
+            return 0;
         }
         break;
+
+    case WM_NCHITTEST:
+        if (!shell->config_.decorations) {
+            return platform::windows::HitTestFrameless(
+                hwnd,
+                lparam,
+                shell->config_.resizable,
+                IsZoomed(hwnd) != FALSE);
+        }
+        break;
+
+    case WM_KUTIE_APPLY_STYLE:
+        shell->ApplyWindowStyle();
+        return 0;
+
+    case WM_KUTIE_START_DRAG:
+        ReleaseCapture();
+        SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+        return 0;
+
+    case WM_KUTIE_MINIMIZE:
+        ShowWindow(hwnd, SW_MINIMIZE);
+        return 0;
+
+    case WM_KUTIE_MAXIMIZE:
+        ShowWindow(hwnd, SW_MAXIMIZE);
+        return 0;
+
+    case WM_KUTIE_RESTORE:
+        ShowWindow(hwnd, SW_RESTORE);
+        return 0;
+
+    case WM_KUTIE_TOGGLE_MAXIMIZE:
+        ShowWindow(hwnd, IsZoomed(hwnd) ? SW_RESTORE : SW_MAXIMIZE);
+        return 0;
 
     case WM_CLOSE:
         if (shell->on_close_ && !shell->on_close_()) {

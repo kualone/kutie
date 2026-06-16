@@ -14,8 +14,10 @@ include(CMakePackageConfigHelpers)
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     option(KUTIE_BUILD_SAMPLES "Build the Kutie sample application" ON)
+    option(KUTIE_BUILD_TESTS "Build Kutie smoke/unit tests" ON)
 else()
     option(KUTIE_BUILD_SAMPLES "Build the Kutie sample application" OFF)
+    option(KUTIE_BUILD_TESTS "Build Kutie smoke/unit tests" OFF)
 endif()
 option(KUTIE_INSTALL "Install Kutie CMake package and library" ON)
 
@@ -56,6 +58,11 @@ add_subdirectory(src)
 
 if(KUTIE_BUILD_SAMPLES)
     add_subdirectory(sample)
+endif()
+
+if(KUTIE_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif()
 
 if(KUTIE_INSTALL)

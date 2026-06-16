@@ -56,6 +56,7 @@ private:
     bool CreateWindowHandle();
     bool InitializeWebView();
     void ApplyWindowStyle();
+    void ScheduleApplyWindowStyle();
     void ApplyWebViewBackground();
     void ConfigureResourceServing();
     void ConfigureIpcBridge();
