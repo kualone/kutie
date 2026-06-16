@@ -57,10 +57,10 @@ bundle.Empty();
 | `ExecuteScript(js)` | Run JS in WebView |
 | `SetTitle` / `SetSize` / `SetPosition` | Geometry |
 | `SetAlwaysOnTop` / `SetResizable` | Window flags |
-| `SetDecorations(bool)` | Native vs frameless |
-| `SetBackground(Color)` | WebView2 default color, frameless gutter, Win11 DWM border |
+| `SetDecorations(bool)` | Native vs partial decoration (custom titlebar) |
+| `SetBackground(Color)` | WebView2 default color and DWM border color |
 | `Minimize` / `Maximize` / `Restore` / `ToggleMaximize` | State |
-| `StartDrag()` | Native titlebar drag |
+| `StartDrag()` | Native drag via `WM_SYSCOMMAND SC_DRAGMOVE` |
 | `ToggleDevTools()` | DevTools window |
 | `OnClose` / `OnResize` / … | Lifecycle callbacks |
 | `NativeHandle()` | `HWND` on Windows |
@@ -98,6 +98,6 @@ await kutie.window.startDrag();
 | `always_on_top` | `false` | Topmost window |
 | `devtools` | `false` | F12 DevTools |
 | `decorations` | `true` | Native titlebar |
-| `shadow` | `true` | DWM shadow when frameless |
+| `shadow` | `true` | DWM shadow and rounded corners when using partial decoration |
 | `background` | dark purple | Launch background |
 | `entry_url` | `https://assets.kutie/index.html` | Initial navigation |

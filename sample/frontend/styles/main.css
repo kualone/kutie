@@ -6,7 +6,7 @@
   --text: #f4f0ff;
   --muted: #b6aed6;
   --accent: #7c6cff;
-  --titlebar: #18142b;
+  --titlebar: var(--bg);
   --border: rgba(255, 255, 255, 0.08);
   --input-bg: #120f22;
   --output-bg: #120f22;
@@ -14,32 +14,44 @@
   --titlebar-btn-active: rgba(255, 255, 255, 0.14);
   --titlebar-close-hover: #e81123;
   --titlebar-close-active: #bf0a1d;
+  --card-shadow: none;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.22);
+  --scrollbar-track: transparent;
 }
 
 [data-theme="light"] {
   color-scheme: light;
-  --bg: #f5f4fa;
+  --bg: #ffffff;
   --panel: #ffffff;
   --text: #1a1528;
   --muted: #5c5470;
   --accent: #6b5ce7;
-  --titlebar: #ebe8f4;
-  --border: rgba(26, 21, 40, 0.12);
+  --titlebar: var(--bg);
+  --border: rgba(26, 21, 40, 0.08);
   --input-bg: #ffffff;
-  --output-bg: #f0eef8;
+  --output-bg: #ffffff;
   --titlebar-btn-hover: rgba(0, 0, 0, 0.06);
   --titlebar-btn-active: rgba(0, 0, 0, 0.1);
   --titlebar-close-hover: #e81123;
   --titlebar-close-active: #bf0a1d;
+  --card-shadow: 0 1px 2px rgba(26, 21, 40, 0.04), 0 6px 20px rgba(26, 21, 40, 0.07);
+  --scrollbar-thumb: rgba(26, 21, 40, 0.22);
+  --scrollbar-track: transparent;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
 html, body {
   margin: 0;
   height: 100%;
+  overflow: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: "Segoe UI", system-ui, sans-serif;
@@ -49,6 +61,7 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -61,10 +74,12 @@ html, body {
   display: flex;
   align-items: stretch;
   justify-content: space-between;
-  padding-left: 14px;
+  padding: 0 0 0 14px;
   background: var(--titlebar);
   border-bottom: 1px solid var(--border);
   user-select: none;
+  position: relative;
+  z-index: 1000;
 }
 
 .titlebar-title {
@@ -121,7 +136,29 @@ html, body {
 .app-scroll {
   flex: 1 1 auto;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
+}
+
+.app-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.app-scroll::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+.app-scroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.app-scroll::-webkit-scrollbar-thumb:hover {
+  filter: brightness(0.92);
 }
 
 .page-header {
@@ -149,6 +186,7 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 16px;
+  box-shadow: var(--card-shadow);
 }
 
 .card h2 {

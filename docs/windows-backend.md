@@ -21,19 +21,20 @@ Kutie Phase 1 implements `IShell` as `WinShell` using Win32 and WebView2.
 - Respond with in-memory stream, `Content-Type`, CORS, `Cache-Control: no-cache`
 - Fallback: WebView2 folder mapping for dev scenarios
 
-## Frameless Window
+## Frameless Window (partial decoration)
 
-When `decorations = false`:
+When `decorations = false` (Saucer-style partial decoration):
 
-- Style: `WS_OVERLAPPED | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX` (no `WS_CAPTION`)
-- Drag: `ReleaseCapture()` + `SendMessage(WM_NCLBUTTONDOWN, HTCAPTION, 0)`
-- **Win11 shadow:** `DWMNCRP_ENABLED` + `DWMWCP_ROUND` when `shadow = true` (margins stay zero)
+- Style: `WS_OVERLAPPED | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME` when `resizable = true` (no `WS_CAPTION`)
+- `WM_NCCALCSIZE`: shrink client by `WINDOWINFO` border sizes so native resize ring sits outside WebView2
+- `DwmExtendFrameIntoClientArea`: top margin 2 px for titlebar blend
+- Drag: `shell.start_drag` → `WM_SYSCOMMAND SC_DRAGMOVE`
+- Resize: OS native border drag (no IPC required)
+- **Win11 shadow:** `DWMNCRP_ENABLED` + `DWMWCP_ROUND` when `shadow = true`
 - **Win11 border:** `DWMWA_BORDER_COLOR` matches `shell.background`
-- **Frameless (all):** no `WS_THICKFRAME`; grey sizing bands avoided, resize via host `WM_NCHITTEST`
-- **Win10 DWM:** `DWMNCRP_DISABLED`
-- **Resize (both):** host `WM_NCHITTEST` on an 8 px gutter; WebView2 inset to expose the gutter
+- **Win10:** native shadow via `WS_THICKFRAME`; top-edge native resize may be unavailable
 
-Do not rely on CSS `-webkit-app-region: drag` — use native drag via IPC.
+Do not rely on CSS `-webkit-app-region: drag` alone — use `data-kutie-drag-region` or `kutie.window.startDrag()` via IPC.
 
 ## DPI
 

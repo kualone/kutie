@@ -1,8 +1,15 @@
 # Custom Titlebar
 
-Kutie supports frameless windows with a frontend-drawn titlebar, similar in UX to [Tauri window customization](https://v2.tauri.app/learn/window-customization/) but with Kutie-specific APIs.
+Kutie supports custom titlebars using a **partial decoration** model (same idea as [Saucer `decoration::partial`](https://saucer.github.io/window/decorations/)): you draw the titlebar in HTML, while Windows keeps native resize borders, Aero Snap, and drop shadow.
 
-## Enable Frameless Mode
+| | Custom titlebar (`decorations = false`) | Native (`decorations = true`) |
+|---|---|---|
+| Titlebar | Frontend HTML | System |
+| Resize borders | OS native (`WS_THICKFRAME`) | OS native |
+| Aero Snap | Yes | Yes |
+| Window shadow | Yes (when `shadow = true`) | Yes |
+
+## Enable partial decoration
 
 ### C++ (startup)
 
@@ -18,7 +25,7 @@ cfg.shell.shadow = true;
 await kutie.call('shell.set_decorations', { decorations: false });
 ```
 
-## HTML Template
+## HTML template
 
 ```html
 <div class="titlebar" data-kutie-drag-region>
@@ -31,7 +38,7 @@ await kutie.call('shell.set_decorations', { decorations: false });
 </div>
 ```
 
-## Drag Region
+## Drag region
 
 | Approach | Usage |
 |---|---|
@@ -42,13 +49,28 @@ await kutie.call('shell.set_decorations', { decorations: false });
 
 Clicks on `button`, `a`, `input`, `select`, and `textarea` inside a drag region do **not** start a drag. Double-click on the drag region (outside interactive children) toggles maximize. Drag starts once the pointer moves about 4 px so double-click is not swallowed.
 
-Frameless mode keeps an 8 px (DPI-scaled) resize border on the host window. WebView2 is inset by the same amount so edge drags reach native hit-testing. The gutter is painted with `shell.background`.
+Drag uses `WM_SYSCOMMAND SC_DRAGMOVE` on the top-level HWND (Qt-style), not CSS `-webkit-app-region`.
 
-**Windows 11:** `DWMWA_BORDER_COLOR` matches `shell.background`, rounded corners, and `DWMNCRP_ENABLED` for shadow (no `DwmExtendFrameIntoClientArea` inset).
+## Resize borders
 
-**Windows 10/11 frameless:** omits `WS_THICKFRAME` — the grey sizing band comes from that flag plus DWM. Resize uses `WM_NCHITTEST` on the host gutter instead. Maximize respects the monitor work area (`WM_GETMINMAXINFO`) so the taskbar stays visible.
+**No frontend code is required.** When `decorations = false` and `resizable = true`, Kutie keeps `WS_THICKFRAME` and handles `WM_NCCALCSIZE` so the native resize ring sits outside the WebView2 client area. Drag any window edge or corner to resize.
 
-## CSS Tips
+**Win10 note:** the top border may not support native drag-resize. Left, right, bottom, and corners work normally.
+
+Keep `shell.background` in sync with your page `--bg` so Win11 rounded corners do not show a color seam.
+
+## Shadow and DWM
+
+When `shadow = true` (default):
+
+- **Windows 11:** `DWMNCRP_ENABLED` + `DWMWCP_ROUND`; `DWMWA_BORDER_COLOR` matches `shell.background`.
+- **Windows 10:** system shadow via partial decoration + `WS_THICKFRAME`; `DWMWA_BORDER_COLOR` matches `shell.background`.
+
+`DwmExtendFrameIntoClientArea` extends the top frame by 2 px so DWM blends with your custom titlebar. Runtime switch to custom titlebar does not require recreating the window.
+
+Maximize respects the monitor work area (`WM_GETMINMAXINFO` + `WM_NCCALCSIZE` work-area snap) so the taskbar stays visible.
+
+## CSS tips
 
 ```css
 .titlebar {
@@ -64,15 +86,11 @@ Frameless mode keeps an 8 px (DPI-scaled) resize border on the host window. WebV
 body {
   padding-top: 36px; /* leave room for fixed titlebar */
 }
-
-.titlebar button {
-  -webkit-app-region: no-drag; /* not reliable alone; buttons use click handlers */
-}
 ```
 
-## Window Controls
+## Window controls
 
-Use built-in IPC handlers:
+Built-in IPC handlers:
 
 - `shell.minimize`
 - `shell.maximize` / `shell.restore`
@@ -90,6 +108,6 @@ Use built-in IPC handlers:
 
 ## Sample
 
-Run `build\sample.exe` and click **Custom titlebar** to switch modes at runtime.
+Run `build\sample.exe` and click **Custom titlebar** to switch modes at runtime. Border drag-resize is handled by the OS — verify manually by dragging window edges.
 
 See also [windows-backend.md](windows-backend.md).

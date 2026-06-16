@@ -1,4 +1,5 @@
 # Smoke test: custom titlebar mode — switch, close via titlebar button.
+# [SKIP] Border drag-resize: verify manually by dragging window edges after switching to custom titlebar.
 param(
     [Parameter(Mandatory = $true)]
     [string]$SampleExe,

@@ -3,6 +3,7 @@
 #include "win_dpi.hpp"
 
 #include <dwmapi.h>
+#include <shellapi.h>
 
 #ifndef DWMWA_BORDER_COLOR
 #define DWMWA_BORDER_COLOR 34
@@ -15,39 +16,41 @@ namespace kutie::platform::windows {
 
 namespace {
 
-void ApplyFramelessDwmChromeWin11(HWND hwnd, const ShellConfig& config) {
-    const COLORREF border = ShellBorderColor(config);
-    DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &border, sizeof(border));
-
-    if (config.shadow) {
-        DWMNCRENDERINGPOLICY policy = DWMNCRP_ENABLED;
-        DwmSetWindowAttribute(hwnd, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
-        const DWM_WINDOW_CORNER_PREFERENCE corner =
-            static_cast<DWM_WINDOW_CORNER_PREFERENCE>(DWMWCP_ROUND);
-        DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
-    } else {
-        DWMNCRENDERINGPOLICY policy = DWMNCRP_DISABLED;
-        DwmSetWindowAttribute(hwnd, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
-        const DWM_WINDOW_CORNER_PREFERENCE corner =
-            static_cast<DWM_WINDOW_CORNER_PREFERENCE>(DWMWCP_DEFAULT);
-        DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
-    }
-    const MARGINS margins = {0, 0, 0, 0};
-    DwmExtendFrameIntoClientArea(hwnd, &margins);
+bool TaskbarAutoHideEdge(UINT edge) {
+    APPBARDATA data{};
+    data.cbSize = sizeof(data);
+    data.uEdge = edge;
+    return SHAppBarMessage(ABM_GETAUTOHIDEBAR, &data) != 0;
 }
 
-void ApplyFramelessDwmChromeWin10(HWND hwnd) {
-    // Win10 draws a visible grey sizing border when NC rendering stays enabled on
-    // frameless WS_THICKFRAME windows. Disable it and keep margins at zero.
-    DWMNCRENDERINGPOLICY policy = DWMNCRP_DISABLED;
-    DwmSetWindowAttribute(hwnd, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
-    const MARGINS margins = {0, 0, 0, 0};
-    DwmExtendFrameIntoClientArea(hwnd, &margins);
+void SnapMaximizedRectToWorkArea(RECT* rect) {
+    if (!rect) {
+        return;
+    }
+    MONITORINFO monitor_info{};
+    monitor_info.cbSize = sizeof(monitor_info);
+    const HMONITOR monitor = MonitorFromRect(rect, MONITOR_DEFAULTTONULL);
+    if (!GetMonitorInfoW(monitor, &monitor_info)) {
+        return;
+    }
+    *rect = monitor_info.rcWork;
+    if (TaskbarAutoHideEdge(ABE_BOTTOM)) {
+        rect->bottom -= 1;
+    }
+    if (TaskbarAutoHideEdge(ABE_LEFT)) {
+        rect->left += 1;
+    }
+    if (TaskbarAutoHideEdge(ABE_TOP)) {
+        rect->top += 1;
+    }
+    if (TaskbarAutoHideEdge(ABE_RIGHT)) {
+        rect->right -= 1;
+    }
 }
 
 } // namespace
 
-DWORD BuildDecorationStyleForPlatform(const ShellConfig& config, bool windows11) {
+DWORD BuildDecorationStyle(const ShellConfig& config) {
     if (config.decorations) {
         DWORD style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
         if (config.resizable) {
@@ -57,16 +60,9 @@ DWORD BuildDecorationStyleForPlatform(const ShellConfig& config, bool windows11)
     }
     DWORD style = WS_MINIMIZEBOX;
     if (config.resizable) {
-        style |= WS_MAXIMIZEBOX;
-        // Frameless resize uses WM_NCHITTEST on the host gutter; WS_THICKFRAME draws
-        // a visible grey sizing band on both Win10 and Win11 when combined with DWM.
-        (void)windows11;
+        style |= WS_MAXIMIZEBOX | WS_THICKFRAME;
     }
     return style;
-}
-
-DWORD BuildDecorationStyle(const ShellConfig& config) {
-    return BuildDecorationStyleForPlatform(config, IsWindows11OrGreater());
 }
 
 DWORD MergeWindowStyle(DWORD current_style, const ShellConfig& config) {
@@ -76,34 +72,16 @@ DWORD MergeWindowStyle(DWORD current_style, const ShellConfig& config) {
     return style;
 }
 
-int FramelessResizeBorderPx(UINT dpi) {
-    return MulDiv(8, dpi, 96);
-}
-
-bool UsesFramelessResizeBorder(const ShellConfig& config, bool maximized) {
-    return !config.decorations && config.resizable && !maximized;
-}
-
-RECT WebViewBoundsForShell(const RECT& client, const ShellConfig& config, bool maximized, UINT dpi) {
-    if (!UsesFramelessResizeBorder(config, maximized)) {
-        return client;
-    }
-    const int border = FramelessResizeBorderPx(dpi);
-    const int width = client.right - client.left;
-    const int height = client.bottom - client.top;
-    if (width <= border * 2 || height <= border * 2) {
-        return client;
-    }
-    RECT inset = client;
-    inset.left += border;
-    inset.top += border;
-    inset.right -= border;
-    inset.bottom -= border;
-    return inset;
-}
-
 COLORREF ShellBorderColor(const ShellConfig& config) {
     return RGB(config.background.r, config.background.g, config.background.b);
+}
+
+void ExtendFrameIntoClientArea(HWND hwnd, int left, int right, int top, int bottom) {
+    if (!hwnd) {
+        return;
+    }
+    const MARGINS margins{left, right, top, bottom};
+    DwmExtendFrameIntoClientArea(hwnd, &margins);
 }
 
 void ApplyFramelessDwmChrome(HWND hwnd, const ShellConfig& config) {
@@ -114,6 +92,7 @@ void ApplyFramelessDwmChrome(HWND hwnd, const ShellConfig& config) {
     if (config.decorations) {
         DWMNCRENDERINGPOLICY policy = DWMNCRP_USEWINDOWSTYLE;
         DwmSetWindowAttribute(hwnd, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
+        ExtendFrameIntoClientArea(hwnd, 0, 0, 0, 0);
         if (IsWindows11OrGreater()) {
             const DWORD border_default = 0xFFFFFFFF;
             DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &border_default, sizeof(border_default));
@@ -121,16 +100,71 @@ void ApplyFramelessDwmChrome(HWND hwnd, const ShellConfig& config) {
                 static_cast<DWM_WINDOW_CORNER_PREFERENCE>(DWMWCP_DEFAULT);
             DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
         }
-        const MARGINS margins = {0, 0, 0, 0};
-        DwmExtendFrameIntoClientArea(hwnd, &margins);
         return;
     }
 
-    if (IsWindows11OrGreater()) {
-        ApplyFramelessDwmChromeWin11(hwnd, config);
+    const COLORREF border = ShellBorderColor(config);
+    DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &border, sizeof(border));
+
+    if (config.shadow) {
+        DWMNCRENDERINGPOLICY policy = DWMNCRP_ENABLED;
+        DwmSetWindowAttribute(hwnd, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
+        if (IsWindows11OrGreater()) {
+            const DWM_WINDOW_CORNER_PREFERENCE corner =
+                static_cast<DWM_WINDOW_CORNER_PREFERENCE>(DWMWCP_ROUND);
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
+        }
     } else {
-        ApplyFramelessDwmChromeWin10(hwnd);
+        DWMNCRENDERINGPOLICY policy = DWMNCRP_DISABLED;
+        DwmSetWindowAttribute(hwnd, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
+        if (IsWindows11OrGreater()) {
+            const DWM_WINDOW_CORNER_PREFERENCE corner =
+                static_cast<DWM_WINDOW_CORNER_PREFERENCE>(DWMWCP_DEFAULT);
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
+        }
     }
+
+    // Partial decoration: extend top frame so DWM blends with the custom titlebar.
+    ExtendFrameIntoClientArea(hwnd, 0, 0, 2, 0);
+}
+
+RECT ApplyPartialNcCalcRect(RECT rect, POINT borders) {
+    rect.bottom -= borders.y;
+    rect.left += borders.x;
+    rect.right -= borders.x;
+    return rect;
+}
+
+std::optional<LRESULT> HandleFramelessNcCalcSize(
+    HWND hwnd,
+    WPARAM wparam,
+    LPARAM lparam,
+    const ShellConfig& config,
+    bool maximized) {
+    if (config.decorations || wparam == FALSE) {
+        return std::nullopt;
+    }
+
+    auto* params = reinterpret_cast<NCCALCSIZE_PARAMS*>(lparam);
+    RECT* rect = &params->rgrc[0];
+
+    if (maximized) {
+        SnapMaximizedRectToWorkArea(rect);
+        return 0;
+    }
+
+    WINDOWINFO info{};
+    info.cbSize = sizeof(info);
+    if (!GetWindowInfo(hwnd, &info)) {
+        return 0;
+    }
+
+    const POINT borders{
+        static_cast<LONG>(info.cxWindowBorders),
+        static_cast<LONG>(info.cyWindowBorders),
+    };
+    *rect = ApplyPartialNcCalcRect(*rect, borders);
+    return 0;
 }
 
 void AdjustMinMaxInfoForWorkArea(MINMAXINFO* minmax, const RECT& work_area, const RECT& monitor_area) {
@@ -141,68 +175,6 @@ void AdjustMinMaxInfoForWorkArea(MINMAXINFO* minmax, const RECT& work_area, cons
     minmax->ptMaxPosition.y = work_area.top - monitor_area.top;
     minmax->ptMaxSize.x = work_area.right - work_area.left;
     minmax->ptMaxSize.y = work_area.bottom - work_area.top;
-}
-
-LRESULT HitTestFramelessClient(
-    const POINT& client_pt,
-    const RECT& client_rect,
-    int border_px,
-    bool resizable,
-    bool maximized) {
-    if (!resizable || maximized || border_px <= 0) {
-        return HTCLIENT;
-    }
-    const int width = client_rect.right - client_rect.left;
-    const int height = client_rect.bottom - client_rect.top;
-    const bool top = client_pt.y < border_px;
-    const bool bottom = client_pt.y >= height - border_px;
-    const bool left = client_pt.x < border_px;
-    const bool right = client_pt.x >= width - border_px;
-    if (top && left) {
-        return HTTOPLEFT;
-    }
-    if (top && right) {
-        return HTTOPRIGHT;
-    }
-    if (bottom && left) {
-        return HTBOTTOMLEFT;
-    }
-    if (bottom && right) {
-        return HTBOTTOMRIGHT;
-    }
-    if (top) {
-        return HTTOP;
-    }
-    if (bottom) {
-        return HTBOTTOM;
-    }
-    if (left) {
-        return HTLEFT;
-    }
-    if (right) {
-        return HTRIGHT;
-    }
-    return HTCLIENT;
-}
-
-LRESULT HitTestFrameless(HWND hwnd, LPARAM lparam, bool resizable, bool maximized) {
-    if (!resizable || maximized) {
-        return HTCLIENT;
-    }
-    POINT pt{
-        static_cast<LONG>(static_cast<short>(LOWORD(lparam))),
-        static_cast<LONG>(static_cast<short>(HIWORD(lparam)))};
-    ScreenToClient(hwnd, &pt);
-    RECT client{};
-    GetClientRect(hwnd, &client);
-    using GetDpiForWindowFn = UINT(WINAPI*)(HWND);
-    UINT dpi = GetSystemDpi();
-    if (const auto get_dpi = reinterpret_cast<GetDpiForWindowFn>(
-            GetProcAddress(GetModuleHandleW(L"user32.dll"), "GetDpiForWindow"))) {
-        dpi = get_dpi(hwnd);
-    }
-    const int border = FramelessResizeBorderPx(dpi);
-    return HitTestFramelessClient(pt, client, border, resizable, maximized);
 }
 
 } // namespace kutie::platform::windows

@@ -67,6 +67,7 @@ private:
     void ShowStartupError(const wchar_t* message);
 
     static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
+    static void RegisterWindowClass();
 
     ShellConfig config_;
     AssetBundle& assets_;

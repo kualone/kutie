@@ -1,8 +1,15 @@
 # 自定义标题栏
 
-Kutie 支持无边框窗口 + 前端绘制标题栏，交互类似 [Tauri 窗口定制](https://v2.tauri.app/learn/window-customization/)，API 为 Kutie 自有。
+Kutie 采用 **partial decoration**（部分装饰）模型实现自定义标题栏，与 [Saucer `decoration::partial`](https://saucer.github.io/window/decorations/) 思路一致：标题栏由前端 HTML 绘制，缩放边框、Aero Snap 与阴影由系统原生提供。
 
-## 启用无边框模式
+| | 自定义标题栏（`decorations = false`） | 原生（`decorations = true`） |
+|---|---|---|
+| 标题栏 | 前端 HTML | 系统 |
+| 缩放边框 | OS 原生（`WS_THICKFRAME`） | OS 原生 |
+| Aero Snap | 支持 | 支持 |
+| 窗口阴影 | 支持（`shadow = true` 时） | 支持 |
+
+## 启用 partial decoration
 
 ### C++（启动时）
 
@@ -42,11 +49,26 @@ await kutie.call('shell.set_decorations', { decorations: false });
 
 拖拽区域内对 `button`、`a`、`input`、`select`、`textarea` 的点击**不会**触发拖拽。在拖拽区域（非交互子元素）上双击可切换最大化。指针移动约 4 px 后才开始拖拽，避免双击被吞掉。
 
-无边框模式下保留 8 px（按 DPI 缩放）的宿主缩放边带；WebView2 内缩相同宽度。边带用 `shell.background` 绘制。
+拖拽通过顶层 HWND 的 `WM_SYSCOMMAND SC_DRAGMOVE`（Qt 同款）实现，请勿单独依赖 CSS `-webkit-app-region`。
 
-**Windows 11：** `DWMWA_BORDER_COLOR` 与 `shell.background` 一致、圆角、`DWMNCRP_ENABLED` 阴影（不再使用 `DwmExtendFrameIntoClientArea` 内缩）。
+## 缩放边框
 
-**Win10/11 无边框：** 均不使用 `WS_THICKFRAME`；缩放靠宿主边带上的 `WM_NCHITTEST`。最大化时通过 `WM_GETMINMAXINFO` 限制在工作区内，不遮挡任务栏。
+**无需前端代码。** 当 `decorations = false` 且 `resizable = true` 时，Kutie 保留 `WS_THICKFRAME`，并在 `WM_NCCALCSIZE` 中将原生缩放环置于 WebView2 客户区之外。直接拖拽窗口边缘或角落即可缩放。
+
+**Win10 说明：** 顶部边框可能无法原生拖拽缩放。左、右、底边与四角正常。
+
+请将 `shell.background` 与页面 `--bg` 同步，避免 Win11 圆角处出现色差。
+
+## 阴影与 DWM
+
+`shadow = true`（默认）时：
+
+- **Windows 11：** `DWMNCRP_ENABLED` + `DWMWCP_ROUND`；`DWMWA_BORDER_COLOR` 与 `shell.background` 一致。
+- **Windows 10：** partial decoration + `WS_THICKFRAME` 保留系统阴影；`DWMWA_BORDER_COLOR` 与 `shell.background` 一致。
+
+`DwmExtendFrameIntoClientArea` 将顶框延伸 2 px，使 DWM 与自定义标题栏融合。运行时切换自定义标题栏无需重建窗口。
+
+最大化时通过 `WM_GETMINMAXINFO` 与工作区 snap 限制在工作区内，不遮挡任务栏。
 
 ## CSS 提示
 
@@ -63,10 +85,6 @@ await kutie.call('shell.set_decorations', { decorations: false });
 
 body {
   padding-top: 36px; /* 为固定标题栏留空 */
-}
-
-.titlebar button {
-  -webkit-app-region: no-drag; /* 单独设置不可靠；按钮应使用 click + IPC */
 }
 ```
 
@@ -90,6 +108,6 @@ body {
 
 ## 示例
 
-运行 `build\sample.exe`，点击 **Custom titlebar** 可在运行时切换模式。
+运行 `build\sample.exe`，点击 **Custom titlebar** 可在运行时切换模式。边框拖拽缩放由 OS 处理，请手动拖拽窗口边缘验证。
 
 另见 [windows-backend.zh.md](windows-backend.zh.md)。

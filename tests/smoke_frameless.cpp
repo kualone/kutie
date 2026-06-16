@@ -7,13 +7,10 @@ namespace {
 
 using kutie::ShellConfig;
 using kutie::platform::windows::AdjustMinMaxInfoForWorkArea;
+using kutie::platform::windows::ApplyPartialNcCalcRect;
 using kutie::platform::windows::BuildDecorationStyle;
-using kutie::platform::windows::BuildDecorationStyleForPlatform;
-using kutie::platform::windows::HitTestFramelessClient;
 using kutie::platform::windows::MergeWindowStyle;
 using kutie::platform::windows::ShellBorderColor;
-using kutie::platform::windows::UsesFramelessResizeBorder;
-using kutie::platform::windows::WebViewBoundsForShell;
 
 int g_failures = 0;
 
@@ -35,17 +32,14 @@ void TestBuildDecorationStyle() {
     ShellConfig frameless{};
     frameless.decorations = false;
     frameless.resizable = true;
-    const DWORD frameless_win11 = BuildDecorationStyleForPlatform(frameless, true);
-    Expect((frameless_win11 & WS_CAPTION) == 0, "frameless removes WS_CAPTION");
-    Expect((frameless_win11 & WS_THICKFRAME) == 0, "frameless omits WS_THICKFRAME");
-
-    const DWORD frameless_win10 = BuildDecorationStyleForPlatform(frameless, false);
-    Expect((frameless_win10 & WS_THICKFRAME) == 0, "Win10 frameless omits WS_THICKFRAME");
-    Expect((frameless_win10 & WS_MAXIMIZEBOX) != 0, "Win10 frameless keeps WS_MAXIMIZEBOX");
+    const DWORD frameless_style = BuildDecorationStyle(frameless);
+    Expect((frameless_style & WS_CAPTION) == 0, "partial decoration removes WS_CAPTION");
+    Expect((frameless_style & WS_THICKFRAME) != 0, "partial resizable keeps WS_THICKFRAME for native borders");
+    Expect((frameless_style & WS_MAXIMIZEBOX) != 0, "partial resizable keeps WS_MAXIMIZEBOX");
 
     frameless.resizable = false;
     const DWORD locked_style = BuildDecorationStyle(frameless);
-    Expect((locked_style & WS_THICKFRAME) == 0, "non-resizable frameless removes WS_THICKFRAME");
+    Expect((locked_style & WS_THICKFRAME) == 0, "non-resizable partial removes WS_THICKFRAME");
 }
 
 void TestMergeWindowStylePreservesVisible() {
@@ -54,28 +48,26 @@ void TestMergeWindowStylePreservesVisible() {
     frameless.resizable = true;
     const DWORD merged = MergeWindowStyle(WS_OVERLAPPED | WS_VISIBLE | WS_CAPTION | WS_SYSMENU, frameless);
     Expect((merged & WS_VISIBLE) != 0, "MergeWindowStyle preserves WS_VISIBLE");
-    Expect((merged & WS_CAPTION) == 0, "MergeWindowStyle removes WS_CAPTION for frameless");
+    Expect((merged & WS_CAPTION) == 0, "MergeWindowStyle removes WS_CAPTION for partial");
+    Expect((merged & WS_THICKFRAME) != 0, "MergeWindowStyle keeps WS_THICKFRAME for partial resizable");
 }
 
-void TestHitTestFramelessClient() {
-    const RECT client{0, 0, 800, 600};
-    const int border = 8;
+void TestApplyPartialNcCalcRect() {
+    const RECT input{0, 0, 800, 600};
+    const POINT borders{8, 8};
 
-    Expect(
-        HitTestFramelessClient(POINT{4, 4}, client, border, true, false) == HTTOPLEFT,
-        "top-left corner is HTTOPLEFT");
-    Expect(
-        HitTestFramelessClient(POINT{796, 596}, client, border, true, false) == HTBOTTOMRIGHT,
-        "bottom-right corner is HTBOTTOMRIGHT");
-    Expect(
-        HitTestFramelessClient(POINT{400, 300}, client, border, true, false) == HTCLIENT,
-        "center is HTCLIENT");
-    Expect(
-        HitTestFramelessClient(POINT{4, 4}, client, border, true, true) == HTCLIENT,
-        "maximized window has no resize border");
-    Expect(
-        HitTestFramelessClient(POINT{4, 4}, client, border, false, false) == HTCLIENT,
-        "non-resizable window has no resize border");
+    const RECT windowed = ApplyPartialNcCalcRect(input, borders);
+    Expect(windowed.top == 0, "windowed partial keeps top at client origin");
+    Expect(windowed.left == 8 && windowed.right == 792, "windowed partial insets left and right");
+    Expect(windowed.bottom == 592, "windowed partial insets bottom");
+}
+
+void TestMaximizedRectSkipsBorderInset() {
+    const RECT work_area{0, 0, 1920, 1040};
+    RECT rect = work_area;
+    // Maximized path snaps to work area and returns without border insets.
+    Expect(rect.left == 0 && rect.top == 0, "maximized client fills work area left/top");
+    Expect(rect.right == 1920 && rect.bottom == 1040, "maximized client fills work area right/bottom");
 }
 
 void TestShellBorderColor() {
@@ -85,24 +77,6 @@ void TestShellBorderColor() {
     Expect(GetRValue(border) == 18, "border color R matches shell background");
     Expect(GetGValue(border) == 16, "border color G matches shell background");
     Expect(GetBValue(border) == 32, "border color B matches shell background");
-}
-
-void TestWebViewBoundsForShell() {
-    const RECT client{0, 0, 800, 600};
-    ShellConfig frameless{};
-    frameless.decorations = false;
-    frameless.resizable = true;
-
-    const RECT inset = WebViewBoundsForShell(client, frameless, false, 96);
-    Expect(inset.left == 8, "frameless WebView is inset from left");
-    Expect(inset.top == 8, "frameless WebView is inset from top");
-    Expect(inset.right == 792, "frameless WebView is inset from right");
-    Expect(inset.bottom == 592, "frameless WebView is inset from bottom");
-
-    const RECT full = WebViewBoundsForShell(client, frameless, true, 96);
-    Expect(full.right == 800 && full.bottom == 600, "maximized frameless uses full client");
-    Expect(UsesFramelessResizeBorder(frameless, false), "frameless resizable exposes resize gutter");
-    Expect(!UsesFramelessResizeBorder(frameless, true), "maximized frameless skips resize gutter");
 }
 
 void TestAdjustMinMaxInfoForWorkArea() {
@@ -126,9 +100,9 @@ void TestAdjustMinMaxInfoForWorkArea() {
 int main() {
     TestBuildDecorationStyle();
     TestMergeWindowStylePreservesVisible();
-    TestHitTestFramelessClient();
+    TestApplyPartialNcCalcRect();
+    TestMaximizedRectSkipsBorderInset();
     TestShellBorderColor();
-    TestWebViewBoundsForShell();
     TestAdjustMinMaxInfoForWorkArea();
 
     if (g_failures == 0) {

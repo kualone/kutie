@@ -22,7 +22,6 @@ struct ShellConfig {
     bool shadow = true;
     Color background{};
     std::string entry_url = "https://assets.kutie/index.html";
-    TitleBarMode title_bar_mode = TitleBarMode::Native;
 };
 
 class IShell {

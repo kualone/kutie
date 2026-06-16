@@ -21,19 +21,20 @@ Kutie 一期通过 Win32 + WebView2 实现 `IShell`（`WinShell`）。
 - 以内存流响应，附带 `Content-Type`、CORS、`Cache-Control: no-cache`
 - 开发回退：WebView2 文件夹映射
 
-## 无边框窗口
+## 无边框窗口（partial decoration）
 
-当 `decorations = false` 时：
+当 `decorations = false` 时（Saucer 风格 partial decoration）：
 
-- 样式：`WS_OVERLAPPED | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX`（无 `WS_CAPTION`）
-- 拖拽：`ReleaseCapture()` + `SendMessage(WM_NCLBUTTONDOWN, HTCAPTION, 0)`
-- **Win11 阴影：** `shadow = true` 时 `DWMNCRP_ENABLED` + `DWMWCP_ROUND`（margin 为零）
+- 样式：`WS_OVERLAPPED | WS_MINIMIZEBOX | WS_MAXIMIZEBOX`，可缩放时含 `WS_THICKFRAME`（无 `WS_CAPTION`）
+- `WM_NCCALCSIZE`：按 `WINDOWINFO` 边框内缩客户区，使原生缩放环位于 WebView2 之外
+- `DwmExtendFrameIntoClientArea`：顶框延伸 2 px，与自定义标题栏融合
+- 拖拽：`shell.start_drag` → `WM_SYSCOMMAND SC_DRAGMOVE`
+- 缩放：OS 原生边框拖拽（无需 IPC）
+- **Win11 阴影：** `shadow = true` 时 `DWMNCRP_ENABLED` + `DWMWCP_ROUND`
 - **Win11 边框：** `DWMWA_BORDER_COLOR` 与 `shell.background` 一致
-- **无边框（通用）：** 无 `WS_THICKFRAME`；缩放靠宿主 `WM_NCHITTEST`
-- **Win10 DWM：** `DWMNCRP_DISABLED`
-- **缩放（共用）：** 宿主 8 px 边带 + `WM_NCHITTEST`；WebView2 内缩以露出边带
+- **Win10：** 通过 `WS_THICKFRAME` 保留系统阴影；顶部边框可能无法原生拖拽缩放
 
-请勿依赖 CSS `-webkit-app-region: drag`，请通过 IPC 调用原生拖拽。
+请勿单独依赖 CSS `-webkit-app-region: drag`，请使用 `data-kutie-drag-region` 或 `kutie.window.startDrag()` IPC。
 
 ## DPI
 

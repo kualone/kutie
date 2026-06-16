@@ -29,7 +29,6 @@ constexpr UINT WM_KUTIE_MINIMIZE = WM_USER + 3;
 constexpr UINT WM_KUTIE_MAXIMIZE = WM_USER + 4;
 constexpr UINT WM_KUTIE_RESTORE = WM_USER + 5;
 constexpr UINT WM_KUTIE_TOGGLE_MAXIMIZE = WM_USER + 6;
-
 std::wstring MakeFallbackFolder(AssetBundle& assets) {
     WCHAR temp_dir[MAX_PATH];
     GetTempPathW(MAX_PATH, temp_dir);
@@ -112,13 +111,22 @@ std::wstring ResolveFrontendFolder() {
 
 } // namespace
 
+void WinShell::RegisterWindowClass() {
+    WNDCLASSEXW window_class{};
+    window_class.cbSize = sizeof(window_class);
+    window_class.style = CS_HREDRAW | CS_VREDRAW;
+    window_class.lpfnWndProc = WindowProc;
+    window_class.hInstance = GetModuleHandleW(nullptr);
+    window_class.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
+    window_class.hbrBackground = CreateSolidBrush(RGB(18, 16, 32));
+    window_class.lpszClassName = kWindowClassName;
+    RegisterClassExW(&window_class);
+}
+
 WinShell::WinShell(const ShellConfig& config, AssetBundle& assets, IpcHub& ipc)
     : config_(config)
     , assets_(assets)
     , ipc_(ipc) {
-    if (!config_.decorations) {
-        config_.title_bar_mode = TitleBarMode::Hidden;
-    }
 }
 
 WinShell::~WinShell() {
@@ -254,7 +262,6 @@ void WinShell::SetResizable(bool resizable) {
 
 void WinShell::SetDecorations(bool decorations) {
     config_.decorations = decorations;
-    config_.title_bar_mode = decorations ? TitleBarMode::Native : TitleBarMode::Hidden;
     ScheduleApplyWindowStyle();
 }
 
@@ -342,19 +349,10 @@ void* WinShell::NativeHandle() const {
 }
 
 bool WinShell::CreateWindowHandle() {
-    WNDCLASSEXW window_class{};
-    window_class.cbSize = sizeof(window_class);
-    window_class.style = CS_HREDRAW | CS_VREDRAW;
-    window_class.lpfnWndProc = WindowProc;
-    window_class.hInstance = GetModuleHandleW(nullptr);
-    window_class.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
-    window_class.hbrBackground = CreateSolidBrush(platform::windows::ToColorRef(config_.background));
-    window_class.lpszClassName = kWindowClassName;
-
-    static bool registered = false;
-    if (!registered) {
-        RegisterClassExW(&window_class);
-        registered = true;
+    static bool window_class_registered = false;
+    if (!window_class_registered) {
+        RegisterWindowClass();
+        window_class_registered = true;
     }
 
     const UINT dpi = platform::windows::GetSystemDpi();
@@ -394,7 +392,7 @@ bool WinShell::CreateWindowHandle() {
         rect.bottom - rect.top,
         nullptr,
         nullptr,
-        window_class.hInstance,
+        GetModuleHandleW(nullptr),
         this);
 
     if (!hwnd_) {
@@ -509,18 +507,7 @@ void WinShell::UpdateWebViewBounds() {
     }
     RECT client{};
     GetClientRect(hwnd_, &client);
-    using GetDpiForWindowFn = UINT(WINAPI*)(HWND);
-    UINT dpi = platform::windows::GetSystemDpi();
-    if (const auto get_dpi = reinterpret_cast<GetDpiForWindowFn>(
-            GetProcAddress(GetModuleHandleW(L"user32.dll"), "GetDpiForWindow"))) {
-        dpi = get_dpi(hwnd_);
-    }
-    const RECT bounds = platform::windows::WebViewBoundsForShell(
-        client,
-        config_,
-        IsMaximized(),
-        dpi);
-    controller_->put_Bounds(bounds);
+    controller_->put_Bounds(client);
 }
 
 void WinShell::ApplyWebViewBackground() {
@@ -775,26 +762,14 @@ LRESULT CALLBACK WinShell::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LP
         }
         break;
 
-    case WM_ERASEBKGND:
-        if (!shell->config_.decorations) {
-            RECT client{};
-            GetClientRect(hwnd, &client);
-            HBRUSH brush = CreateSolidBrush(platform::windows::ShellBorderColor(shell->config_));
-            FillRect(reinterpret_cast<HDC>(wparam), &client, brush);
-            DeleteObject(brush);
-            return 1;
+    case WM_NCCALCSIZE: {
+        const bool maximized = IsZoomed(hwnd) != FALSE;
+        if (const auto result = platform::windows::HandleFramelessNcCalcSize(
+                hwnd, wparam, lparam, shell->config_, maximized)) {
+            return *result;
         }
         break;
-
-    case WM_NCHITTEST:
-        if (!shell->config_.decorations) {
-            return platform::windows::HitTestFrameless(
-                hwnd,
-                lparam,
-                shell->config_.resizable,
-                IsZoomed(hwnd) != FALSE);
-        }
-        break;
+    }
 
     case WM_KUTIE_APPLY_STYLE:
         shell->ApplyWindowStyle();
@@ -804,7 +779,7 @@ LRESULT CALLBACK WinShell::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LP
 
     case WM_KUTIE_START_DRAG:
         ReleaseCapture();
-        SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+        SendMessageW(hwnd, WM_SYSCOMMAND, platform::windows::kSysCommandDragMove, 0);
         return 0;
 
     case WM_KUTIE_MINIMIZE:

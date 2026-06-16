@@ -2,7 +2,7 @@ const THEME_STORAGE_KEY = 'kutie-sample-theme';
 
 const THEME_BACKGROUNDS = {
   dark: { r: 18, g: 16, b: 32 },
-  light: { r: 245, g: 244, b: 250 },
+  light: { r: 255, g: 255, b: 255 },
 };
 
 function logEvent(message) {
