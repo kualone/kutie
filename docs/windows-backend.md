@@ -25,14 +25,12 @@ Kutie Phase 1 implements `IShell` as `WinShell` using Win32 and WebView2.
 
 When `decorations = false` (Saucer-style partial decoration):
 
-- Style: `WS_OVERLAPPED | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME` when `resizable = true` (no `WS_CAPTION`)
-- `WM_NCCALCSIZE`: shrink client by `WINDOWINFO` border sizes so native resize ring sits outside WebView2
-- `DwmExtendFrameIntoClientArea`: top margin 2 px for titlebar blend
+- Style: `WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME` when `resizable = true` (same as Saucer `decoration::partial`)
+- `WM_NCCALCSIZE`: inset left/right/bottom by `WINDOWINFO` borders; on Windows 11 add a 1 px top offset so caption buttons align with the client edge
+- `DwmExtendFrameIntoClientArea`: top margin 2 px for titlebar blend; `DWMWA_BORDER_COLOR` matches `shell.background`
 - Drag: `shell.start_drag` → `WM_SYSCOMMAND SC_DRAGMOVE`
-- Resize: OS native border drag (no IPC required)
-- **Win11 shadow:** `DWMNCRP_ENABLED` + `DWMWCP_ROUND` when `shadow = true`
-- **Win11 border:** `DWMWA_BORDER_COLOR` matches `shell.background`
-- **Win10:** native shadow via `WS_THICKFRAME`; top-edge native resize may be unavailable
+- Resize: OS native border drag via `WS_THICKFRAME` (no IPC required)
+- **Win10:** top-edge native resize may be unavailable (Saucer documents the same trade-off)
 
 Do not rely on CSS `-webkit-app-region: drag` alone — use `data-kutie-drag-region` or `kutie.window.startDrag()` via IPC.
 

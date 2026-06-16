@@ -10,6 +10,7 @@ using kutie::platform::windows::AdjustMinMaxInfoForWorkArea;
 using kutie::platform::windows::ApplyPartialNcCalcRect;
 using kutie::platform::windows::BuildDecorationStyle;
 using kutie::platform::windows::MergeWindowStyle;
+using kutie::platform::windows::PartialDecorationTopOffset;
 using kutie::platform::windows::ShellBorderColor;
 
 int g_failures = 0;
@@ -22,52 +23,53 @@ void Expect(bool condition, const char* message) {
 }
 
 void TestBuildDecorationStyle() {
-    ShellConfig native{};
-    native.decorations = true;
-    native.resizable = true;
-    const DWORD native_style = BuildDecorationStyle(native);
+    ShellConfig config{};
+    config.resizable = true;
+
+    config.decorations = true;
+    const DWORD native_style = BuildDecorationStyle(config);
     Expect((native_style & WS_CAPTION) != 0, "native mode keeps WS_CAPTION");
     Expect((native_style & WS_THICKFRAME) != 0, "native resizable keeps WS_THICKFRAME");
 
-    ShellConfig frameless{};
-    frameless.decorations = false;
-    frameless.resizable = true;
-    const DWORD frameless_style = BuildDecorationStyle(frameless);
-    Expect((frameless_style & WS_CAPTION) == 0, "partial decoration removes WS_CAPTION");
-    Expect((frameless_style & WS_THICKFRAME) != 0, "partial resizable keeps WS_THICKFRAME for native borders");
-    Expect((frameless_style & WS_MAXIMIZEBOX) != 0, "partial resizable keeps WS_MAXIMIZEBOX");
+    config.decorations = false;
+    const DWORD partial_style = BuildDecorationStyle(config);
+    Expect((partial_style & WS_CAPTION) != 0, "partial decoration keeps WS_CAPTION like Saucer");
+    Expect((partial_style & WS_THICKFRAME) != 0, "partial resizable keeps WS_THICKFRAME");
+    Expect((partial_style & WS_MAXIMIZEBOX) != 0, "partial resizable keeps WS_MAXIMIZEBOX");
 
-    frameless.resizable = false;
-    const DWORD locked_style = BuildDecorationStyle(frameless);
-    Expect((locked_style & WS_THICKFRAME) == 0, "non-resizable partial removes WS_THICKFRAME");
+    config.resizable = false;
+    const DWORD locked_style = BuildDecorationStyle(config);
+    Expect((locked_style & WS_THICKFRAME) == 0, "non-resizable removes WS_THICKFRAME");
 }
 
 void TestMergeWindowStylePreservesVisible() {
-    ShellConfig frameless{};
-    frameless.decorations = false;
-    frameless.resizable = true;
-    const DWORD merged = MergeWindowStyle(WS_OVERLAPPED | WS_VISIBLE | WS_CAPTION | WS_SYSMENU, frameless);
+    ShellConfig partial{};
+    partial.decorations = false;
+    partial.resizable = true;
+    const DWORD merged = MergeWindowStyle(WS_OVERLAPPED | WS_VISIBLE | WS_CAPTION | WS_SYSMENU, partial);
     Expect((merged & WS_VISIBLE) != 0, "MergeWindowStyle preserves WS_VISIBLE");
-    Expect((merged & WS_CAPTION) == 0, "MergeWindowStyle removes WS_CAPTION for partial");
+    Expect((merged & WS_CAPTION) != 0, "MergeWindowStyle keeps WS_CAPTION for partial");
     Expect((merged & WS_THICKFRAME) != 0, "MergeWindowStyle keeps WS_THICKFRAME for partial resizable");
+}
+
+void TestPartialDecorationTopOffset() {
+    Expect(PartialDecorationTopOffset(true, false, 0, 8) == 1, "Win11 windowed uses 1px top offset");
+    Expect(PartialDecorationTopOffset(false, false, 0, 8) == 0, "Win10 windowed keeps 0px top offset");
+    Expect(PartialDecorationTopOffset(true, true, -1, 8) == 8, "maximized negative top uses border height");
+    Expect(PartialDecorationTopOffset(true, true, 0, 8) == 1, "maximized non-negative top keeps Win11 offset");
 }
 
 void TestApplyPartialNcCalcRect() {
     const RECT input{0, 0, 800, 600};
     const POINT borders{8, 8};
 
-    const RECT windowed = ApplyPartialNcCalcRect(input, borders);
-    Expect(windowed.top == 0, "windowed partial keeps top at client origin");
-    Expect(windowed.left == 8 && windowed.right == 792, "windowed partial insets left and right");
-    Expect(windowed.bottom == 592, "windowed partial insets bottom");
-}
+    const RECT win11 = ApplyPartialNcCalcRect(input, borders, 1);
+    Expect(win11.top == 1, "partial client applies top offset");
+    Expect(win11.left == 8 && win11.right == 792, "partial client insets left and right");
+    Expect(win11.bottom == 592, "partial client insets bottom");
 
-void TestMaximizedRectSkipsBorderInset() {
-    const RECT work_area{0, 0, 1920, 1040};
-    RECT rect = work_area;
-    // Maximized path snaps to work area and returns without border insets.
-    Expect(rect.left == 0 && rect.top == 0, "maximized client fills work area left/top");
-    Expect(rect.right == 1920 && rect.bottom == 1040, "maximized client fills work area right/bottom");
+    const RECT win10 = ApplyPartialNcCalcRect(input, borders, 0);
+    Expect(win10.top == 0, "Win10 partial keeps client top at origin");
 }
 
 void TestShellBorderColor() {
@@ -100,8 +102,8 @@ void TestAdjustMinMaxInfoForWorkArea() {
 int main() {
     TestBuildDecorationStyle();
     TestMergeWindowStylePreservesVisible();
+    TestPartialDecorationTopOffset();
     TestApplyPartialNcCalcRect();
-    TestMaximizedRectSkipsBorderInset();
     TestShellBorderColor();
     TestAdjustMinMaxInfoForWorkArea();
 

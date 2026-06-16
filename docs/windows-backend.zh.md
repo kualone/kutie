@@ -25,14 +25,12 @@ Kutie 一期通过 Win32 + WebView2 实现 `IShell`（`WinShell`）。
 
 当 `decorations = false` 时（Saucer 风格 partial decoration）：
 
-- 样式：`WS_OVERLAPPED | WS_MINIMIZEBOX | WS_MAXIMIZEBOX`，可缩放时含 `WS_THICKFRAME`（无 `WS_CAPTION`）
-- `WM_NCCALCSIZE`：按 `WINDOWINFO` 边框内缩客户区，使原生缩放环位于 WebView2 之外
-- `DwmExtendFrameIntoClientArea`：顶框延伸 2 px，与自定义标题栏融合
+- 样式：`WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX`，可缩放时含 `WS_THICKFRAME`（与 Saucer `decoration::partial` 一致）
+- `WM_NCCALCSIZE`：按 `WINDOWINFO` 内缩左/右/底边框；Windows 11 在顶部额外偏移 1 px，使标题栏按钮贴齐客户区上沿
+- `DwmExtendFrameIntoClientArea`：顶框延伸 2 px；`DWMWA_BORDER_COLOR` 与 `shell.background` 一致
 - 拖拽：`shell.start_drag` → `WM_SYSCOMMAND SC_DRAGMOVE`
-- 缩放：OS 原生边框拖拽（无需 IPC）
-- **Win11 阴影：** `shadow = true` 时 `DWMNCRP_ENABLED` + `DWMWCP_ROUND`
-- **Win11 边框：** `DWMWA_BORDER_COLOR` 与 `shell.background` 一致
-- **Win10：** 通过 `WS_THICKFRAME` 保留系统阴影；顶部边框可能无法原生拖拽缩放
+- 缩放：通过 `WS_THICKFRAME` 由 OS 原生边框拖拽（无需 IPC）
+- **Win10：** 顶部边框可能无法原生拖拽缩放（Saucer 同样取舍）
 
 请勿单独依赖 CSS `-webkit-app-region: drag`，请使用 `data-kutie-drag-region` 或 `kutie.window.startDrag()` IPC。
 

@@ -61,32 +61,34 @@ Keep `shell.background` in sync with your page `--bg` so Win11 rounded corners d
 
 ## Shadow and DWM
 
-When `shadow = true` (default):
+`DwmExtendFrameIntoClientArea` extends the top frame by 2 px so DWM blends with your custom titlebar. `DWMWA_BORDER_COLOR` is set to `shell.background` so the system border matches your page. Runtime switch to custom titlebar does not require recreating the window.
 
-- **Windows 11:** `DWMNCRP_ENABLED` + `DWMWCP_ROUND`; `DWMWA_BORDER_COLOR` matches `shell.background`.
-- **Windows 10:** system shadow via partial decoration + `WS_THICKFRAME`; `DWMWA_BORDER_COLOR` matches `shell.background`.
-
-`DwmExtendFrameIntoClientArea` extends the top frame by 2 px so DWM blends with your custom titlebar. Runtime switch to custom titlebar does not require recreating the window.
-
-Maximize respects the monitor work area (`WM_GETMINMAXINFO` + `WM_NCCALCSIZE` work-area snap) so the taskbar stays visible.
+Maximize respects the monitor work area (`WM_GETMINMAXINFO`) so the taskbar stays visible.
 
 ## CSS tips
 
 ```css
 .titlebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 36px;
+  height: 32px;
+  display: flex;
+  align-items: stretch;
   user-select: none;
   -webkit-user-select: none;
 }
 
-body {
-  padding-top: 36px; /* leave room for fixed titlebar */
+.titlebar-controls {
+  display: flex;
+  align-self: stretch;
+}
+
+.titlebar-btn {
+  width: 46px;
+  align-self: stretch;
+  appearance: none;
 }
 ```
+
+Use `box-shadow` (not `border-bottom`) for the titlebar separator so button hover fills the full 32 px height.
 
 ## Window controls
 

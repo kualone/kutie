@@ -61,32 +61,34 @@ await kutie.call('shell.set_decorations', { decorations: false });
 
 ## 阴影与 DWM
 
-`shadow = true`（默认）时：
+`DwmExtendFrameIntoClientArea` 将顶框延伸 2 px，使 DWM 与自定义标题栏融合。`DWMWA_BORDER_COLOR` 设为 `shell.background`，使系统边框与页面一致。运行时切换自定义标题栏无需重建窗口。
 
-- **Windows 11：** `DWMNCRP_ENABLED` + `DWMWCP_ROUND`；`DWMWA_BORDER_COLOR` 与 `shell.background` 一致。
-- **Windows 10：** partial decoration + `WS_THICKFRAME` 保留系统阴影；`DWMWA_BORDER_COLOR` 与 `shell.background` 一致。
-
-`DwmExtendFrameIntoClientArea` 将顶框延伸 2 px，使 DWM 与自定义标题栏融合。运行时切换自定义标题栏无需重建窗口。
-
-最大化时通过 `WM_GETMINMAXINFO` 与工作区 snap 限制在工作区内，不遮挡任务栏。
+最大化时通过 `WM_GETMINMAXINFO` 限制在工作区内，不遮挡任务栏。
 
 ## CSS 提示
 
 ```css
 .titlebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 36px;
+  height: 32px;
+  display: flex;
+  align-items: stretch;
   user-select: none;
   -webkit-user-select: none;
 }
 
-body {
-  padding-top: 36px; /* 为固定标题栏留空 */
+.titlebar-controls {
+  display: flex;
+  align-self: stretch;
+}
+
+.titlebar-btn {
+  width: 46px;
+  align-self: stretch;
+  appearance: none;
 }
 ```
+
+标题栏分割线请用 `box-shadow`，不要用 `border-bottom`，否则按钮 hover 高度会少 1 px。
 
 ## 窗口控制
 
