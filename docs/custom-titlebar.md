@@ -42,7 +42,11 @@ await kutie.call('shell.set_decorations', { decorations: false });
 
 Clicks on `button`, `a`, `input`, `select`, and `textarea` inside a drag region do **not** start a drag. Double-click on the drag region (outside interactive children) toggles maximize. Drag starts once the pointer moves about 4 px so double-click is not swallowed.
 
-Frameless mode keeps an 8 px (DPI-scaled) resize border via native hit-testing; the WebView client area fills the rest.
+Frameless mode keeps an 8 px (DPI-scaled) resize border on the host window. WebView2 is inset by the same amount so edge drags reach native hit-testing. The gutter is painted with `shell.background`.
+
+**Windows 11:** `DWMWA_BORDER_COLOR` matches `shell.background`, rounded corners, and `DWMNCRP_ENABLED` for shadow (no `DwmExtendFrameIntoClientArea` inset).
+
+**Windows 10/11 frameless:** omits `WS_THICKFRAME` — the grey sizing band comes from that flag plus DWM. Resize uses `WM_NCHITTEST` on the host gutter instead. Maximize respects the monitor work area (`WM_GETMINMAXINFO`) so the taskbar stays visible.
 
 ## CSS Tips
 

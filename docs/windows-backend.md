@@ -27,7 +27,11 @@ When `decorations = false`:
 
 - Style: `WS_OVERLAPPED | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX` (no `WS_CAPTION`)
 - Drag: `ReleaseCapture()` + `SendMessage(WM_NCLBUTTONDOWN, HTCAPTION, 0)`
-- Shadow: `DWMWA_NCRENDERING_POLICY` enabled when `shadow = true`
+- **Win11 shadow:** `DWMNCRP_ENABLED` + `DWMWCP_ROUND` when `shadow = true` (margins stay zero)
+- **Win11 border:** `DWMWA_BORDER_COLOR` matches `shell.background`
+- **Frameless (all):** no `WS_THICKFRAME`; grey sizing bands avoided, resize via host `WM_NCHITTEST`
+- **Win10 DWM:** `DWMNCRP_DISABLED`
+- **Resize (both):** host `WM_NCHITTEST` on an 8 px gutter; WebView2 inset to expose the gutter
 
 Do not rely on CSS `-webkit-app-region: drag` — use native drag via IPC.
 

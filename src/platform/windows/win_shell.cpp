@@ -388,10 +388,7 @@ bool WinShell::CreateWindowHandle() {
         return false;
     }
 
-    if (config_.shadow && !config_.decorations) {
-        DWMNCRENDERINGPOLICY policy = DWMNCRP_ENABLED;
-        DwmSetWindowAttribute(hwnd_, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
-    }
+    platform::windows::ApplyFramelessDwmChrome(hwnd_, config_);
 
     return hwnd_ != nullptr;
 }
@@ -431,9 +428,7 @@ bool WinShell::InitializeWebView() {
                                 webview_->AddRef();
                             }
 
-                            RECT bounds{};
-                            GetClientRect(hwnd_, &bounds);
-                            controller_->put_Bounds(bounds);
+                            UpdateWebViewBounds();
 
                             ApplyWebViewBackground();
                             ConfigureResourceServing();
@@ -450,11 +445,7 @@ bool WinShell::InitializeWebView() {
                                         if (!success) {
                                             ShowStartupError(L"Failed to load the application UI.");
                                         }
-                                        if (controller_) {
-                                            RECT client{};
-                                            GetClientRect(hwnd_, &client);
-                                            controller_->put_Bounds(client);
-                                        }
+                                        UpdateWebViewBounds();
                                         ShowWhenReady();
                                         return S_OK;
                                     })
@@ -496,11 +487,27 @@ void WinShell::ApplyWindowStyle() {
         0,
         SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
-    if (config_.shadow) {
-        const DWMNCRENDERINGPOLICY policy =
-            config_.decorations ? DWMNCRP_USEWINDOWSTYLE : DWMNCRP_ENABLED;
-        DwmSetWindowAttribute(hwnd_, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
+    platform::windows::ApplyFramelessDwmChrome(hwnd_, config_);
+}
+
+void WinShell::UpdateWebViewBounds() {
+    if (!controller_ || !hwnd_) {
+        return;
     }
+    RECT client{};
+    GetClientRect(hwnd_, &client);
+    using GetDpiForWindowFn = UINT(WINAPI*)(HWND);
+    UINT dpi = platform::windows::GetSystemDpi();
+    if (const auto get_dpi = reinterpret_cast<GetDpiForWindowFn>(
+            GetProcAddress(GetModuleHandleW(L"user32.dll"), "GetDpiForWindow"))) {
+        dpi = get_dpi(hwnd_);
+    }
+    const RECT bounds = platform::windows::WebViewBoundsForShell(
+        client,
+        config_,
+        IsMaximized(),
+        dpi);
+    controller_->put_Bounds(bounds);
 }
 
 void WinShell::ApplyWebViewBackground() {
@@ -701,11 +708,7 @@ LRESULT CALLBACK WinShell::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LP
 
     switch (message) {
     case WM_SIZE:
-        if (shell->controller_) {
-            RECT bounds{};
-            GetClientRect(hwnd, &bounds);
-            shell->controller_->put_Bounds(bounds);
-        }
+        shell->UpdateWebViewBounds();
         if (shell->on_resize_ && wparam != SIZE_MINIMIZED) {
             RECT client{};
             GetClientRect(hwnd, &client);
@@ -732,9 +735,7 @@ LRESULT CALLBACK WinShell::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LP
                 SWP_NOZORDER | SWP_NOACTIVATE);
         }
         if (shell->controller_) {
-            RECT bounds{};
-            GetClientRect(hwnd, &bounds);
-            shell->controller_->put_Bounds(bounds);
+            shell->UpdateWebViewBounds();
         }
         return 0;
     }
@@ -745,9 +746,30 @@ LRESULT CALLBACK WinShell::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LP
         }
         return 0;
 
-    case WM_NCCALCSIZE:
-        if (!shell->config_.decorations && wparam) {
+    case WM_GETMINMAXINFO:
+        if (!shell->config_.decorations) {
+            auto* minmax = reinterpret_cast<MINMAXINFO*>(lparam);
+            MONITORINFO monitor_info{};
+            monitor_info.cbSize = sizeof(monitor_info);
+            const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            if (GetMonitorInfoW(monitor, &monitor_info)) {
+                platform::windows::AdjustMinMaxInfoForWorkArea(
+                    minmax,
+                    monitor_info.rcWork,
+                    monitor_info.rcMonitor);
+            }
             return 0;
+        }
+        break;
+
+    case WM_ERASEBKGND:
+        if (!shell->config_.decorations) {
+            RECT client{};
+            GetClientRect(hwnd, &client);
+            HBRUSH brush = CreateSolidBrush(platform::windows::ShellBorderColor(shell->config_));
+            FillRect(reinterpret_cast<HDC>(wparam), &client, brush);
+            DeleteObject(brush);
+            return 1;
         }
         break;
 
@@ -763,6 +785,8 @@ LRESULT CALLBACK WinShell::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LP
 
     case WM_KUTIE_APPLY_STYLE:
         shell->ApplyWindowStyle();
+        shell->UpdateWebViewBounds();
+        InvalidateRect(hwnd, nullptr, TRUE);
         return 0;
 
     case WM_KUTIE_START_DRAG:

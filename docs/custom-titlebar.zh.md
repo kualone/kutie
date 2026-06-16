@@ -42,7 +42,11 @@ await kutie.call('shell.set_decorations', { decorations: false });
 
 拖拽区域内对 `button`、`a`、`input`、`select`、`textarea` 的点击**不会**触发拖拽。在拖拽区域（非交互子元素）上双击可切换最大化。指针移动约 4 px 后才开始拖拽，避免双击被吞掉。
 
-无边框模式下保留 8 px（按 DPI 缩放）的原生缩放边框；其余区域为 WebView 客户区。
+无边框模式下保留 8 px（按 DPI 缩放）的宿主缩放边带；WebView2 内缩相同宽度。边带用 `shell.background` 绘制。
+
+**Windows 11：** `DWMWA_BORDER_COLOR` 与 `shell.background` 一致、圆角、`DWMNCRP_ENABLED` 阴影（不再使用 `DwmExtendFrameIntoClientArea` 内缩）。
+
+**Win10/11 无边框：** 均不使用 `WS_THICKFRAME`；缩放靠宿主边带上的 `WM_NCHITTEST`。最大化时通过 `WM_GETMINMAXINFO` 限制在工作区内，不遮挡任务栏。
 
 ## CSS 提示
 

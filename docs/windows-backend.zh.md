@@ -27,7 +27,11 @@ Kutie 一期通过 Win32 + WebView2 实现 `IShell`（`WinShell`）。
 
 - 样式：`WS_OVERLAPPED | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX`（无 `WS_CAPTION`）
 - 拖拽：`ReleaseCapture()` + `SendMessage(WM_NCLBUTTONDOWN, HTCAPTION, 0)`
-- 阴影：`shadow = true` 时启用 `DWMWA_NCRENDERING_POLICY`
+- **Win11 阴影：** `shadow = true` 时 `DWMNCRP_ENABLED` + `DWMWCP_ROUND`（margin 为零）
+- **Win11 边框：** `DWMWA_BORDER_COLOR` 与 `shell.background` 一致
+- **无边框（通用）：** 无 `WS_THICKFRAME`；缩放靠宿主 `WM_NCHITTEST`
+- **Win10 DWM：** `DWMNCRP_DISABLED`
+- **缩放（共用）：** 宿主 8 px 边带 + `WM_NCHITTEST`；WebView2 内缩以露出边带
 
 请勿依赖 CSS `-webkit-app-region: drag`，请通过 IPC 调用原生拖拽。
 

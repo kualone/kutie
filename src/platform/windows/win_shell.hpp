@@ -57,6 +57,7 @@ private:
     bool InitializeWebView();
     void ApplyWindowStyle();
     void ScheduleApplyWindowStyle();
+    void UpdateWebViewBounds();
     void ApplyWebViewBackground();
     void ConfigureResourceServing();
     void ConfigureIpcBridge();
