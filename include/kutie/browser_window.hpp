@@ -24,6 +24,9 @@ struct BrowserWindowOptions {
 
     uint32_t parent_id = 0;
     bool modal = false;
+    /// When false with a parent, the window is created with an owner (no separate taskbar button).
+    /// Independent windows (parent_id = 0) always appear in the taskbar on Windows.
+    bool show_in_taskbar = true;
 };
 
 class BrowserWindow {

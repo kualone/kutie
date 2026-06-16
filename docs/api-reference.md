@@ -117,3 +117,4 @@ await kutie.BrowserWindow.create({ title: 'Dialog', url: '...', parent_id: win.i
 | `url` | `https://assets.kutie/index.html` | Initial navigation |
 | `parent_id` | `0` | Parent window id |
 | `modal` | `false` | Modal child (requires `parent_id`) |
+| `show_in_taskbar` | auto | Separate taskbar button (Windows) |

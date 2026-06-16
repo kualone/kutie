@@ -13,6 +13,7 @@ constexpr DWORD kDecorationStyleMask =
 constexpr WPARAM kSysCommandDragMove = 0xF012;
 
 DWORD BuildDecorationStyle(const BrowserWindowOptions& config);
+DWORD BuildBaseWindowStyle(const BrowserWindowOptions& config);
 DWORD MergeWindowStyle(DWORD current_style, const BrowserWindowOptions& config);
 
 void ApplyFramelessDwmChrome(HWND hwnd, const BrowserWindowOptions& config);

@@ -12,26 +12,30 @@ DWORD BuildDecorationStyle(const BrowserWindowOptions& config) {
     return style;
 }
 
+DWORD BuildBaseWindowStyle(const BrowserWindowOptions& config) {
+    if (config.frame) {
+        DWORD style = WS_OVERLAPPEDWINDOW;
+        if (!config.resizable) {
+            style &= ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
+        }
+        return style;
+    }
+    return WS_OVERLAPPED | BuildDecorationStyle(config);
+}
+
 DWORD MergeWindowStyle(DWORD current_style, const BrowserWindowOptions& config) {
     DWORD style = current_style;
-    style &= ~kDecorationStyleMask;
-    style |= BuildDecorationStyle(config);
+    style &= ~(WS_OVERLAPPEDWINDOW | kDecorationStyleMask);
+    style |= BuildBaseWindowStyle(config);
     return style;
 }
 
 void ApplyFramelessDwmChrome(HWND hwnd, const BrowserWindowOptions& config) {
-    if (!hwnd) {
-        return;
+    if (!hwnd) return;
+    MARGINS margins{};
+    if (!config.frame && !IsZoomed(hwnd)) {
+        margins.cyTopHeight = 2;  // partial decoration blend
     }
-
-    if (config.frame) {
-        const MARGINS margins{};
-        DwmExtendFrameIntoClientArea(hwnd, &margins);
-        return;
-    }
-
-    // Partial decoration: extend top frame so DWM blends with the custom titlebar.
-    const MARGINS margins{0, 0, 2, 0};
     DwmExtendFrameIntoClientArea(hwnd, &margins);
 }
 

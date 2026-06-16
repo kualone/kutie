@@ -17,7 +17,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     config.main_window.height = 720;
     config.main_window.center = true;
     config.main_window.devtools = true;
-    config.main_window.frame = true;
+    config.main_window.frame = false;
 
     kutie::Runtime app(config);
     auto& ipc = app.ipc();

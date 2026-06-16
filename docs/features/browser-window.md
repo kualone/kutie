@@ -27,7 +27,7 @@ app.OnReady([&](kutie::Runtime&) {
     dialog.modal = true;
     dialog.width = 480;
     dialog.height = 360;
-    dialog.frame = false;
+    dialog.frame = true;
     dialog.url = "https://assets.kutie/dialog.html";
     kutie::BrowserWindow::Create(dialog);
 });
@@ -49,7 +49,7 @@ const modal = await kutie.BrowserWindow.create({
   height: 360,
   parent_id: win.id,
   modal: true,
-  frame: false,
+  frame: true,
 });
 await modal.close();
 ```
@@ -70,6 +70,24 @@ await modal.close();
 | `url` | `https://assets.kutie/index.html` | Initial navigation URL |
 | `parent_id` | `0` | Parent window id (`0` = none) |
 | `modal` | `false` | Block parent interaction (requires `parent_id`) |
+| `show_in_taskbar` | `true` when `parent_id = 0`, else `false` | Separate taskbar button on Windows |
+
+## Custom titlebar on child windows
+
+When `frame: false`, the native caption is drawn into the client area (partial decoration). **Provide an HTML titlebar** in the page — see `sample/frontend/child-window.html`. Without it, maximize/minimize/close controls are not reachable after maximize.
+
+The sample modal (`sample/frontend/dialog.html`) uses **`frame: true`** (native OS title bar) so system maximize/close keep working without HTML chrome.
+
+Use `data-kutie-drag-region` and titlebar buttons wired to `kutie.BrowserWindow.getCurrent()` (see `sample/frontend/scripts/child-window.js`).
+
+## Taskbar icons (Windows)
+
+| Configuration | Taskbar |
+|---|---|
+| No `parent_id` | Own taskbar button (`WS_EX_APPWINDOW`) |
+| `parent_id` + `show_in_taskbar: false` (default for children) | No separate button (Win32 owner) |
+| `parent_id` + `show_in_taskbar: true` | Own taskbar button; z-order parent via `GWLP_HWNDPARENT` |
+| `modal: true` | Never a separate taskbar button |
 
 ## Modal windows
 

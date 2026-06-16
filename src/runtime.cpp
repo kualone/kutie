@@ -31,6 +31,7 @@ BrowserWindowOptions ParseWindowOptions(const nlohmann::json& payload) {
     options.url = payload.value("url", options.url);
     options.parent_id = payload.value("parent_id", 0u);
     options.modal = payload.value("modal", false);
+    options.show_in_taskbar = payload.value("show_in_taskbar", options.parent_id == 0);
     return options;
 }
 

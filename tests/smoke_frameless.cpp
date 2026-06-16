@@ -10,6 +10,7 @@ namespace {
 using kutie::BrowserWindowOptions;
 using kutie::platform::windows::AdjustMinMaxInfoForWorkArea;
 using kutie::platform::windows::ApplyPartialNcCalcRect;
+using kutie::platform::windows::BuildBaseWindowStyle;
 using kutie::platform::windows::BuildDecorationStyle;
 using kutie::platform::windows::MergeWindowStyle;
 using kutie::platform::windows::PartialDecorationTopOffset;
@@ -23,12 +24,27 @@ void Expect(bool condition, const char* message) {
     }
 }
 
+void TestBuildBaseWindowStyle() {
+    BrowserWindowOptions native{};
+    native.frame = true;
+    native.resizable = true;
+    const DWORD native_style = BuildBaseWindowStyle(native);
+    Expect(native_style == WS_OVERLAPPEDWINDOW, "native resizable frame uses WS_OVERLAPPEDWINDOW");
+
+    BrowserWindowOptions partial{};
+    partial.frame = false;
+    partial.resizable = true;
+    const DWORD partial_style = BuildBaseWindowStyle(partial);
+    Expect((partial_style & WS_CAPTION) != 0, "partial frame keeps WS_CAPTION");
+    Expect((partial_style & WS_MAXIMIZEBOX) != 0, "partial resizable keeps WS_MAXIMIZEBOX");
+}
+
 void TestBuildDecorationStyle() {
     BrowserWindowOptions config{};
     config.resizable = true;
 
     config.frame = true;
-    const DWORD native_style = BuildDecorationStyle(config);
+    const DWORD native_style = BuildBaseWindowStyle(config);
     Expect((native_style & WS_CAPTION) != 0, "native mode keeps WS_CAPTION");
     Expect((native_style & WS_THICKFRAME) != 0, "native resizable keeps WS_THICKFRAME");
 
@@ -91,6 +107,7 @@ void TestAdjustMinMaxInfoForWorkArea() {
 } // namespace
 
 int main() {
+    TestBuildBaseWindowStyle();
     TestBuildDecorationStyle();
     TestMergeWindowStylePreservesVisible();
     TestPartialDecorationTopOffset();

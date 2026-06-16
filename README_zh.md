@@ -4,6 +4,8 @@
 
 **一期范围：** 仅 Windows。macOS / Linux 见 [路线图](docs/roadmap.md)。
 
+![Kutie 示例主窗口](docs/pic/main.png)
+
 ## 特性
 
 - **单 EXE 部署** — WebView2Loader 静态链接，前端资源嵌入可执行文件

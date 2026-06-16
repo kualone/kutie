@@ -1,4 +1,4 @@
-# Smoke test: modal BrowserWindow — open dialog, verify parent disabled, close dialog.
+# Smoke test: modal BrowserWindow — open dialog, verify parent disabled, maximize keeps custom titlebar, close dialog.
 param(
     [Parameter(Mandatory = $true)]
     [string]$SampleExe,
@@ -19,9 +19,6 @@ public static class KutieWin32 {
     public static extern bool IsWindowEnabled(IntPtr hWnd);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
-    [DllImport("user32.dll")]
-    public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-    public const uint WM_CLOSE = 0x0010;
 }
 "@
 
@@ -41,6 +38,19 @@ function Find-InProcess($proc, [string]$name) {
             [System.Windows.Automation.AutomationElement]::NameProperty, $name)
         $match = $win.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $btnCond)
         if ($match) { return $match }
+    }
+    return $null
+}
+
+function Find-TextContaining($proc, [string]$fragment) {
+    foreach ($win in Get-ProcessWindows $proc) {
+        $all = $win.FindAll(
+            [System.Windows.Automation.TreeScope]::Descendants,
+            [System.Windows.Automation.Condition]::TrueCondition)
+        foreach ($el in $all) {
+            $name = $el.Current.Name
+            if ($name -and $name.Contains($fragment)) { return $el }
+        }
     }
     return $null
 }
@@ -95,7 +105,24 @@ try {
         throw "Modal window (title 'Modal Dialog') not found"
     }
 
-    [void][KutieWin32]::PostMessage($modalHwnd, [KutieWin32]::WM_CLOSE, [IntPtr]::Zero, [IntPtr]::Zero)
+    $dialogBody = Find-TextContaining $proc 'parent window is disabled'
+    if (-not $dialogBody) {
+        throw "Modal dialog content not loaded (expected body text in dialog.html)"
+    }
+
+    $maximizeBtn = Find-InProcess $proc 'Maximize'
+    if (-not $maximizeBtn) {
+        throw "Modal custom titlebar Maximize button not found"
+    }
+    Invoke-UiButton $maximizeBtn
+    Start-Sleep -Seconds 1
+
+    $closeBtn = Find-InProcess $proc 'Close dialog'
+    if (-not $closeBtn) {
+        throw "Custom titlebar Close dialog button missing after maximize"
+    }
+
+    Invoke-UiButton $closeBtn
     Start-Sleep -Seconds 1
 
     if (-not [KutieWin32]::IsWindowEnabled($mainHwnd)) {

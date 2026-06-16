@@ -1,4 +1,4 @@
-# Smoke test: custom titlebar mode — switch, close via titlebar button.
+# Smoke test: custom titlebar mode — default frameless, close via titlebar button.
 # [SKIP] Border drag-resize: verify manually by dragging window edges after switching to custom titlebar.
 param(
     [Parameter(Mandatory = $true)]
@@ -40,30 +40,17 @@ Start-Sleep -Milliseconds 500
 
 $proc = Start-Process -FilePath $SampleExe -PassThru
 try {
-    $customBtn = $null
+    $closeBtn = $null
     for ($i = 0; $i -lt $StartupTimeoutSec; $i++) {
         Start-Sleep -Seconds 1
         if ($proc.HasExited) {
             throw "sample.exe exited during startup (code $($proc.ExitCode))"
         }
-        $customBtn = Find-InProcess $proc 'Custom titlebar'
-        if ($customBtn) { break }
+        $closeBtn = Find-InProcess $proc 'Close'
+        if ($closeBtn) { break }
     }
-    if (-not $customBtn) {
-        throw "Custom titlebar button not found within ${StartupTimeoutSec}s"
-    }
-
-    Invoke-UiButton $customBtn
-    Start-Sleep -Seconds 1
-
-    if ($proc.HasExited) {
-        throw "sample.exe crashed after switching to custom titlebar"
-    }
-
-    # Titlebar close button uses aria-label="Close" after custom mode is shown.
-    $closeBtn = Find-InProcess $proc 'Close'
     if (-not $closeBtn) {
-        throw "Titlebar close button (Close) not found after custom titlebar mode"
+        throw "Titlebar close button (Close) not found within ${StartupTimeoutSec}s — expected default frame: false"
     }
 
     Invoke-UiButton $closeBtn

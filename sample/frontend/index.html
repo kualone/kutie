@@ -8,7 +8,7 @@
 </head>
 <body>
   <div id="app-root">
-    <header id="titlebar" class="titlebar hidden" data-kutie-drag-region>
+    <header id="titlebar" class="titlebar" data-kutie-drag-region>
       <div class="titlebar-title">Kutie Demo</div>
       <div class="titlebar-controls">
         <button type="button" class="titlebar-btn" data-action="minimize" title="Minimize" aria-label="Minimize">
@@ -24,12 +24,12 @@
     </header>
 
     <div class="app-scroll">
-      <header id="native-header" class="page-header">
+      <header id="native-header" class="page-header hidden">
         <h1>Kutie Demo</h1>
         <p>C++ backend + Web frontend on WebView2</p>
       </header>
 
-      <header id="custom-header" class="page-header hidden">
+      <header id="custom-header" class="page-header">
         <h1>Custom Titlebar Mode</h1>
         <p>Drag the top bar to move the window.</p>
       </header>
@@ -54,7 +54,10 @@
           </div>
           <div class="row">
             <button id="btn-open-modal" type="button">Open modal dialog</button>
+            <button id="btn-open-child" type="button">Open child window</button>
+            <button id="btn-open-standalone" type="button">Open independent window</button>
           </div>
+          <p class="hint">Modal/child windows use custom HTML titlebars. Independent windows get their own taskbar icon (no <code>parent_id</code>).</p>
           <div class="row">
             <button id="btn-native-titlebar" type="button">Native titlebar</button>
             <button id="btn-custom-titlebar" type="button">Custom titlebar</button>

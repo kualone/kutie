@@ -4,6 +4,8 @@ A lightweight C++ desktop framework powered by WebView2. Build modern desktop ap
 
 **Phase 1:** Windows only. macOS and Linux are planned.
 
+![Kutie sample main window](docs/pic/main.png)
+
 ## Features
 
 - **Single EXE deployment** — WebView2Loader statically linked; frontend assets embedded in the executable

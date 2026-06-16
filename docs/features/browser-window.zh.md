@@ -27,7 +27,7 @@ app.OnReady([&](kutie::Runtime&) {
     dialog.modal = true;
     dialog.width = 480;
     dialog.height = 360;
-    dialog.frame = false;
+    dialog.frame = true;
     dialog.url = "https://assets.kutie/dialog.html";
     kutie::BrowserWindow::Create(dialog);
 });
@@ -49,7 +49,7 @@ const modal = await kutie.BrowserWindow.create({
   height: 360,
   parent_id: win.id,
   modal: true,
-  frame: false,
+  frame: true,
 });
 await modal.close();
 ```
@@ -70,6 +70,24 @@ await modal.close();
 | `url` | `https://assets.kutie/index.html` | 初始导航 URL |
 | `parent_id` | `0` | 父窗口 id（`0` 表示无） |
 | `modal` | `false` | 阻塞父窗口交互（需 `parent_id`） |
+| `show_in_taskbar` | 无 parent 时为 `true`，否则默认 `false` | Windows 上是否显示独立任务栏按钮 |
+
+## 子窗口自定义标题栏
+
+`frame: false` 时原生标题栏被收入客户区（partial decoration）。**页面需提供 HTML 标题栏** — 参考 `sample/frontend/child-window.html`。否则最大化后无法操作最小化/最大化/关闭。
+
+Sample 模态框（`sample/frontend/dialog.html`）使用 **`frame: true`**（原生 OS 标题栏），最大化/关闭由系统标题栏提供，无需 HTML 标题栏。
+
+使用 `data-kutie-drag-region`，按钮调用 `kutie.BrowserWindow.getCurrent()`（见 `sample/frontend/scripts/child-window.js`）。
+
+## 任务栏图标（Windows）
+
+| 配置 | 任务栏 |
+|---|---|
+| 无 `parent_id` | 独立任务栏按钮（`WS_EX_APPWINDOW`） |
+| 有 `parent_id` 且 `show_in_taskbar: false`（子窗口默认） | 无独立按钮（Win32 owner） |
+| 有 `parent_id` 且 `show_in_taskbar: true` | 独立按钮；通过 `GWLP_HWNDPARENT` 保持层级 |
+| `modal: true` | 永不单独出现在任务栏 |
 
 ## 模态窗口
 

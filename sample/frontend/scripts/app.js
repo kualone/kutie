@@ -16,6 +16,14 @@ function setTitlebarMode(custom) {
   document.getElementById('custom-header').classList.toggle('hidden', !custom);
 }
 
+async function enableCustomTitlebar() {
+  if (!window.kutie) {
+    return;
+  }
+  await kutie.BrowserWindow.getCurrent().setFrame(false);
+  setTitlebarMode(true);
+}
+
 function setTheme(theme) {
   const next = theme === 'light' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
@@ -45,7 +53,7 @@ async function init() {
     return;
   }
 
-  setTitlebarMode(false);
+  await enableCustomTitlebar();
 
   kutie.on('heartbeat', (data) => {
     logEvent(`heartbeat tick=${data.tick}`);
@@ -68,9 +76,8 @@ async function init() {
     setTitlebarMode(false);
   });
 
-  document.getElementById('btn-custom-titlebar').addEventListener('click', async () => {
-    await current().setFrame(false);
-    setTitlebarMode(true);
+  document.getElementById('btn-custom-titlebar').addEventListener('click', () => {
+    enableCustomTitlebar();
   });
 
   document.getElementById('btn-theme-dark').addEventListener('click', () => setTheme('dark'));
@@ -81,14 +88,42 @@ async function init() {
     await kutie.BrowserWindow.create({
       title: 'Modal Dialog',
       url: 'https://assets.kutie/dialog.html',
-      width: 420,
-      height: 280,
+      width: 480,
+      height: 320,
       parent_id: parent.id,
       modal: true,
       frame: false,
       center: true,
     });
     logEvent('modal opened');
+  });
+
+  document.getElementById('btn-open-child').addEventListener('click', async () => {
+    const parent = current();
+    await kutie.BrowserWindow.create({
+      title: 'Child Window',
+      url: 'https://assets.kutie/child-window.html',
+      width: 460,
+      height: 300,
+      parent_id: parent.id,
+      modal: false,
+      frame: false,
+      show_in_taskbar: false,
+      center: true,
+    });
+    logEvent('child window opened (no taskbar icon)');
+  });
+
+  document.getElementById('btn-open-standalone').addEventListener('click', async () => {
+    await kutie.BrowserWindow.create({
+      title: 'Independent Window',
+      url: 'https://assets.kutie/standalone-window.html',
+      width: 520,
+      height: 340,
+      frame: false,
+      center: true,
+    });
+    logEvent('independent window opened (own taskbar icon)');
   });
 
   document.querySelectorAll('[data-action]').forEach((button) => {

@@ -323,17 +323,24 @@ bool WinBrowserWindow::CreateWindowHandle() {
         window_class_registered = true;
     }
 
-    HWND owner = ResolveOwnerHwnd(options_.parent_id);
-    if (options_.modal && owner) {
-        modal_parent_hwnd_ = owner;
+    HWND owner = nullptr;
+    HWND parent_hwnd = ResolveOwnerHwnd(options_.parent_id);
+    if (options_.modal && parent_hwnd) {
+        modal_parent_hwnd_ = parent_hwnd;
+        owner = parent_hwnd;
+    } else if (parent_hwnd && !options_.show_in_taskbar) {
+        owner = parent_hwnd;
     }
 
     const UINT dpi = platform::windows::GetSystemDpi();
     const int width = MulDiv(options_.width, dpi, 96);
     const int height = MulDiv(options_.height, dpi, 96);
 
-    DWORD style = WS_OVERLAPPED | platform::windows::BuildDecorationStyle(options_);
+    DWORD style = platform::windows::BuildBaseWindowStyle(options_);
     DWORD ex_style = options_.always_on_top ? WS_EX_TOPMOST : 0;
+    if (!owner) {
+        ex_style |= WS_EX_APPWINDOW;
+    }
     RECT rect{0, 0, width, height};
 
     using AdjustWindowRectExForDpiFn = BOOL(WINAPI*)(LPRECT, DWORD, BOOL, DWORD, UINT);
@@ -371,7 +378,15 @@ bool WinBrowserWindow::CreateWindowHandle() {
         return false;
     }
 
-    platform::windows::ApplyFramelessDwmChrome(hwnd_, options_);
+    if (!options_.frame) {
+        ApplyWindowStyle();
+    } else {
+        platform::windows::ApplyFramelessDwmChrome(hwnd_, options_);
+    }
+
+    if (parent_hwnd && !owner) {
+        SetWindowLongPtrW(hwnd_, GWLP_HWNDPARENT, reinterpret_cast<LONG_PTR>(parent_hwnd));
+    }
 
     if (options_.modal && modal_parent_hwnd_) {
         EnableWindow(modal_parent_hwnd_, FALSE);
@@ -493,10 +508,13 @@ void WinBrowserWindow::ConfigureResourceServing() {
 
     ComPtr<ICoreWebView2_3> webview3;
     if (SUCCEEDED(webview_->QueryInterface(IID_PPV_ARGS(&webview3)))) {
-        webview3->SetVirtualHostNameToFolderMapping(
-            kVirtualHost,
-            folder.c_str(),
-            COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+        // When embedded assets exist, serve exclusively via WebResourceRequested below.
+        if (assets_.Empty() && !folder.empty()) {
+            webview3->SetVirtualHostNameToFolderMapping(
+                kVirtualHost,
+                folder.c_str(),
+                COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+        }
     }
 
     ComPtr<ICoreWebView2_2> webview2;
@@ -536,8 +554,11 @@ void WinBrowserWindow::ConfigureResourceServing() {
 
                 AssetBundle::Asset asset;
                 if (!assets_.Resolve(path, asset)) {
-                    if (!AssetBundle::LooksLikeStaticAsset(path) && assets_.Resolve("/index.html", asset)) {
-                        // SPA fallback
+                    const bool is_html =
+                        path.size() >= 5 && _stricmp(path.c_str() + path.size() - 5, ".html") == 0;
+                    if (!is_html && !AssetBundle::LooksLikeStaticAsset(path) &&
+                        assets_.Resolve("/index.html", asset)) {
+                        // SPA client-route fallback (not for missing .html files).
                     } else {
                         return S_OK;
                     }
@@ -662,14 +683,33 @@ LRESULT CALLBACK WinBrowserWindow::WindowProc(HWND hwnd, UINT message, WPARAM wp
     }
 
     switch (message) {
-    case WM_SIZE:
+    case WM_SIZE: {
+        LRESULT size_result = 0;
+        if (window->options_.frame) {
+            size_result = DefWindowProcW(hwnd, message, wparam, lparam);
+        } else {
+            platform::windows::ApplyFramelessDwmChrome(hwnd, window->options_);
+        }
         window->UpdateWebViewBounds();
         if (window->on_resize_ && wparam != SIZE_MINIMIZED) {
             RECT client{};
             GetClientRect(hwnd, &client);
             window->on_resize_(client.right, client.bottom);
         }
-        return 0;
+        if (window->options_.frame &&
+            (wparam == SIZE_MAXIMIZED || wparam == SIZE_RESTORED)) {
+            SetWindowPos(
+                hwnd,
+                nullptr,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+            window->UpdateWebViewBounds();
+        }
+        return size_result;
+    }
 
     case WM_DPICHANGED: {
         const RECT* suggested = reinterpret_cast<RECT*>(lparam);
@@ -689,30 +729,34 @@ LRESULT CALLBACK WinBrowserWindow::WindowProc(HWND hwnd, UINT message, WPARAM wp
         return 0;
     }
 
-    case WM_GETMINMAXINFO:
-        if (!window->options_.frame) {
-            auto* minmax = reinterpret_cast<MINMAXINFO*>(lparam);
-            MONITORINFO monitor_info{};
-            monitor_info.cbSize = sizeof(monitor_info);
-            const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-            if (GetMonitorInfoW(monitor, &monitor_info)) {
-                platform::windows::AdjustMinMaxInfoForWorkArea(
-                    minmax,
-                    monitor_info.rcWork,
-                    monitor_info.rcMonitor);
-            }
-            return 0;
+    case WM_GETMINMAXINFO: {
+        auto* minmax = reinterpret_cast<MINMAXINFO*>(lparam);
+        MONITORINFO monitor_info{};
+        monitor_info.cbSize = sizeof(monitor_info);
+        const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        if (GetMonitorInfoW(monitor, &monitor_info)) {
+            platform::windows::AdjustMinMaxInfoForWorkArea(
+                minmax,
+                monitor_info.rcWork,
+                monitor_info.rcMonitor);
         }
-        break;
+        // Owned/modal windows need explicit work-area limits; DefWindowProc can clip the caption.
+        return 0;
+    }
 
     case WM_NCCALCSIZE: {
         const bool maximized = IsZoomed(hwnd) != FALSE;
         if (const auto result = platform::windows::HandleFramelessNcCalcSize(
                 hwnd, wparam, lparam, window->options_, maximized)) {
+            window->UpdateWebViewBounds();
             return *result;
         }
         break;
     }
+
+    case WM_WINDOWPOSCHANGED:
+        window->UpdateWebViewBounds();
+        break;
 
     case WM_KUTIE_APPLY_STYLE:
         window->ApplyWindowStyle();

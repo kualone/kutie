@@ -34,7 +34,9 @@ void WinWebViewHost::EnsureReady(ReadyCallback callback) {
     }
 
     if (!to_run.empty()) {
-        callback(S_OK, environment_);
+        for (ReadyCallback& ready : to_run) {
+            ready(S_OK, environment_);
+        }
         return;
     }
 
