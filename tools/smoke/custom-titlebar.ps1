@@ -12,28 +12,7 @@ if (-not (Test-Path $SampleExe)) {
     Write-Error "Sample not found: $SampleExe"
 }
 
-Add-Type -AssemblyName UIAutomationClient
-Add-Type -AssemblyName UIAutomationTypes
-
-function Get-ProcWindow($proc) {
-    $root = [System.Windows.Automation.AutomationElement]::RootElement
-    $cond = New-Object System.Windows.Automation.PropertyCondition(
-        [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $proc.Id)
-    return $root.FindFirst([System.Windows.Automation.TreeScope]::Children, $cond)
-}
-
-function Find-InProcess($proc, [string]$name) {
-    $win = Get-ProcWindow $proc
-    if (-not $win) { return $null }
-    $btnCond = New-Object System.Windows.Automation.PropertyCondition(
-        [System.Windows.Automation.AutomationElement]::NameProperty, $name)
-    return $win.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $btnCond)
-}
-
-function Invoke-UiButton($element) {
-    $pattern = $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-    $pattern.Invoke()
-}
+. "$PSScriptRoot\_ui_helpers.ps1"
 
 Get-Process sample -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 500

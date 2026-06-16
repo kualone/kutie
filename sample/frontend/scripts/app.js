@@ -126,15 +126,6 @@ async function init() {
     logEvent('independent window opened (own taskbar icon)');
   });
 
-  document.querySelectorAll('[data-action]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const action = button.getAttribute('data-action');
-      if (action === 'minimize') current().minimize();
-      if (action === 'maximize') current().toggleMaximize();
-      if (action === 'close') current().close();
-    });
-  });
-
   document.getElementById('btn-open-file').addEventListener('click', async () => {
     setOutput('system-output', await kutie.call('dialog.open', { title: 'Open File' }));
   });

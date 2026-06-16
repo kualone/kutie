@@ -1,9 +1,8 @@
 #include "kutie/asset_bundle.hpp"
 
-#include <Windows.h>
-
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 
@@ -11,24 +10,41 @@ namespace kutie {
 
 namespace {
 
-std::string WideToUtf8(const std::wstring& text) {
-    if (text.empty()) {
-        return {};
-    }
-    const int length = WideCharToMultiByte(CP_UTF8, 0, text.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    std::string result(static_cast<std::size_t>(length - 1), '\0');
-    WideCharToMultiByte(CP_UTF8, 0, text.c_str(), -1, result.data(), length, nullptr, nullptr);
-    return result;
-}
+struct ExtensionInfo {
+    const char* ext;
+    const char* mime;
+};
 
-std::wstring Utf8ToWide(const std::string& text) {
-    if (text.empty()) {
-        return {};
+const ExtensionInfo kExtensionTable[] = {
+    {".css", "text/css; charset=utf-8"},
+    {".gif", "image/gif"},
+    {".htm", "text/html; charset=utf-8"},
+    {".html", "text/html; charset=utf-8"},
+    {".ico", "image/x-icon"},
+    {".jpeg", "image/jpeg"},
+    {".jpg", "image/jpeg"},
+    {".js", "application/javascript; charset=utf-8"},
+    {".json", "application/json; charset=utf-8"},
+    {".map", "application/json; charset=utf-8"},
+    {".otf", nullptr},
+    {".png", "image/png"},
+    {".svg", "image/svg+xml"},
+    {".ttf", "font/ttf"},
+    {".txt", "text/plain; charset=utf-8"},
+    {".wasm", "application/wasm"},
+    {".webp", "image/webp"},
+    {".woff", "font/woff"},
+    {".woff2", "font/woff2"},
+    {".xml", nullptr},
+};
+
+const ExtensionInfo* FindExtensionInfo(const std::string& ext) {
+    for (const ExtensionInfo& info : kExtensionTable) {
+        if (_stricmp(ext.c_str(), info.ext) == 0) {
+            return &info;
+        }
     }
-    const int length = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, nullptr, 0);
-    std::wstring result(static_cast<std::size_t>(length - 1), L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, result.data(), length);
-    return result;
+    return nullptr;
 }
 
 std::vector<AssetBundle::EmbeddedLoader>& EmbeddedLoaders() {
@@ -72,49 +88,21 @@ std::string AssetBundle::GuessContentType(const std::string& path) {
     if (dot == std::string::npos) {
         return "application/octet-stream";
     }
-    std::string ext = path.substr(dot);
-    for (auto& ch : ext) {
-        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    const std::string ext = path.substr(dot);
+    if (const ExtensionInfo* info = FindExtensionInfo(ext)) {
+        if (info->mime) {
+            return info->mime;
+        }
     }
-
-    if (ext == ".html" || ext == ".htm") return "text/html; charset=utf-8";
-    if (ext == ".css") return "text/css; charset=utf-8";
-    if (ext == ".js") return "application/javascript; charset=utf-8";
-    if (ext == ".json") return "application/json; charset=utf-8";
-    if (ext == ".svg") return "image/svg+xml";
-    if (ext == ".png") return "image/png";
-    if (ext == ".jpg" || ext == ".jpeg") return "image/jpeg";
-    if (ext == ".gif") return "image/gif";
-    if (ext == ".webp") return "image/webp";
-    if (ext == ".ico") return "image/x-icon";
-    if (ext == ".woff") return "font/woff";
-    if (ext == ".woff2") return "font/woff2";
-    if (ext == ".ttf") return "font/ttf";
-    if (ext == ".txt") return "text/plain; charset=utf-8";
-    if (ext == ".wasm") return "application/wasm";
-    if (ext == ".map") return "application/json; charset=utf-8";
     return "application/octet-stream";
 }
 
 bool AssetBundle::LooksLikeStaticAsset(const std::string& path) {
-    static const char* extensions[] = {
-        ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",
-        ".woff", ".woff2", ".ttf", ".otf", ".wasm", ".json", ".xml",
-        ".txt", ".webp", ".map", nullptr
-    };
-
     const auto dot = path.rfind('.');
     if (dot == std::string::npos) {
         return false;
     }
-
-    const std::string ext = path.substr(dot);
-    for (const char** current = extensions; *current; ++current) {
-        if (_stricmp(ext.c_str(), *current) == 0) {
-            return true;
-        }
-    }
-    return false;
+    return FindExtensionInfo(path.substr(dot)) != nullptr;
 }
 
 void AssetBundle::Put(const std::string& path, const std::vector<std::uint8_t>& bytes, const std::string& content_type) {

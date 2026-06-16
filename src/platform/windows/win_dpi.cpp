@@ -1,28 +1,8 @@
 #include "win_dpi.hpp"
-#include "win_string_util.hpp"
 
 #include <shellscalingapi.h>
-#include <winternl.h>
-
-namespace {
-
-using RtlGetVersionFn = LONG(WINAPI*)(PRTL_OSVERSIONINFOW);
-
-} // namespace
 
 namespace kutie::platform::windows {
-
-bool IsWindows11OrGreater() {
-    RTL_OSVERSIONINFOW version{};
-    version.dwOSVersionInfoSize = sizeof(version);
-    if (const auto get_version = reinterpret_cast<RtlGetVersionFn>(
-            GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion"))) {
-        if (get_version(&version) == 0) {
-            return version.dwBuildNumber >= 22000;
-        }
-    }
-    return false;
-}
 
 void EnsurePerMonitorDpiAwareness() {
     using SetProcessDpiAwarenessContextFn = BOOL(WINAPI*)(DPI_AWARENESS_CONTEXT);
@@ -47,19 +27,6 @@ UINT GetSystemDpi() {
         return get_dpi();
     }
     return 96;
-}
-
-COLORREF ToColorRef(const kutie::Color& color) {
-    return RGB(color.r, color.g, color.b);
-}
-
-kutie::Color FromColorRef(COLORREF color) {
-    return kutie::Color{
-        GetRValue(color),
-        GetGValue(color),
-        GetBValue(color),
-        255
-    };
 }
 
 } // namespace kutie::platform::windows

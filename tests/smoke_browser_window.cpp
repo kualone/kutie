@@ -1,18 +1,10 @@
 #include "kutie/browser_window.hpp"
-
-#include <cstdlib>
-#include <iostream>
+#include "test_util.hpp"
 
 namespace {
 
-int g_failures = 0;
-
-void Expect(bool condition, const char* message) {
-    if (!condition) {
-        std::cerr << "FAIL: " << message << '\n';
-        ++g_failures;
-    }
-}
+using kutie::test::Expect;
+using kutie::test::Finish;
 
 void TestValidateModalRequiresParent() {
     kutie::BrowserWindowOptions options;
@@ -43,12 +35,5 @@ int main() {
     TestValidateModalRequiresParent();
     TestValidatePositiveDimensions();
     TestValidateDefaultOptions();
-
-    if (g_failures == 0) {
-        std::cout << "smoke_browser_window: all tests passed\n";
-        return EXIT_SUCCESS;
-    }
-
-    std::cerr << "smoke_browser_window: " << g_failures << " failure(s)\n";
-    return EXIT_FAILURE;
+    return Finish("smoke_browser_window");
 }

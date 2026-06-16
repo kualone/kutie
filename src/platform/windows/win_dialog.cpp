@@ -8,18 +8,55 @@
 
 #pragma comment(lib, "ole32.lib")
 
+namespace {
+
+struct ComApartmentScope {
+    ComApartmentScope()
+        : initialized_(SUCCEEDED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE))) {}
+    ~ComApartmentScope() {
+        if (initialized_) {
+            CoUninitialize();
+        }
+    }
+
+private:
+    bool initialized_;
+};
+
+void ApplyFilterSpecs(IFileDialog* dialog, const std::vector<kutie::PlatformServices::FileFilter>& filters) {
+    std::vector<std::wstring> pattern_storage;
+    std::vector<COMDLG_FILTERSPEC> filter_specs;
+    for (const auto& filter : filters) {
+        pattern_storage.push_back(kutie::platform::windows::Utf8ToWide(filter.label));
+        pattern_storage.push_back(kutie::platform::windows::Utf8ToWide(filter.pattern));
+        filter_specs.push_back({pattern_storage[pattern_storage.size() - 2].c_str(),
+                                pattern_storage[pattern_storage.size() - 1].c_str()});
+    }
+    if (!filter_specs.empty()) {
+        dialog->SetFileTypes(static_cast<UINT>(filter_specs.size()), filter_specs.data());
+    }
+}
+
+std::optional<std::string> ReadShellItemPath(IShellItem* item) {
+    PWSTR path = nullptr;
+    if (FAILED(item->GetDisplayName(SIGDN_FILESYSPATH, &path))) {
+        return std::nullopt;
+    }
+    const std::string utf8_path = kutie::platform::windows::WideToUtf8(path);
+    CoTaskMemFree(path);
+    return utf8_path;
+}
+
+} // namespace
+
 namespace kutie {
 
 std::vector<std::string> PlatformServices::OpenFiles(void* parent_window, const OpenFileOptions& options) {
     std::vector<std::string> files;
-    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-    const bool com_initialized = SUCCEEDED(hr);
+    ComApartmentScope com;
 
     IFileOpenDialog* dialog = nullptr;
     if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)))) {
-        if (com_initialized) {
-            CoUninitialize();
-        }
         return files;
     }
 
@@ -31,18 +68,7 @@ std::vector<std::string> PlatformServices::OpenFiles(void* parent_window, const 
     }
     dialog->SetOptions(flags);
     dialog->SetTitle(platform::windows::Utf8ToWide(options.title).c_str());
-
-    std::vector<std::wstring> pattern_storage;
-    std::vector<COMDLG_FILTERSPEC> filter_specs;
-    for (const auto& filter : options.filters) {
-        pattern_storage.push_back(platform::windows::Utf8ToWide(filter.label));
-        pattern_storage.push_back(platform::windows::Utf8ToWide(filter.pattern));
-        filter_specs.push_back({pattern_storage[pattern_storage.size() - 2].c_str(),
-                                pattern_storage[pattern_storage.size() - 1].c_str()});
-    }
-    if (!filter_specs.empty()) {
-        dialog->SetFileTypes(static_cast<UINT>(filter_specs.size()), filter_specs.data());
-    }
+    ApplyFilterSpecs(dialog, options.filters);
 
     if (dialog->Show(static_cast<HWND>(parent_window)) == S_OK) {
         IShellItemArray* items = nullptr;
@@ -52,10 +78,8 @@ std::vector<std::string> PlatformServices::OpenFiles(void* parent_window, const 
             for (DWORD index = 0; index < count; ++index) {
                 IShellItem* item = nullptr;
                 if (SUCCEEDED(items->GetItemAt(index, &item))) {
-                    PWSTR path = nullptr;
-                    if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &path))) {
-                        files.push_back(platform::windows::WideToUtf8(path));
-                        CoTaskMemFree(path);
+                    if (const auto path = ReadShellItemPath(item)) {
+                        files.push_back(*path);
                     }
                     item->Release();
                 }
@@ -65,21 +89,14 @@ std::vector<std::string> PlatformServices::OpenFiles(void* parent_window, const 
     }
 
     dialog->Release();
-    if (com_initialized) {
-        CoUninitialize();
-    }
     return files;
 }
 
 std::optional<std::string> PlatformServices::SaveFile(void* parent_window, const SaveFileOptions& options) {
-    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-    const bool com_initialized = SUCCEEDED(hr);
+    ComApartmentScope com;
 
     IFileSaveDialog* dialog = nullptr;
     if (FAILED(CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)))) {
-        if (com_initialized) {
-            CoUninitialize();
-        }
         return std::nullopt;
     }
 
@@ -87,18 +104,7 @@ std::optional<std::string> PlatformServices::SaveFile(void* parent_window, const
     dialog->GetOptions(&flags);
     dialog->SetOptions(flags | FOS_FORCEFILESYSTEM | FOS_OVERWRITEPROMPT);
     dialog->SetTitle(platform::windows::Utf8ToWide(options.title).c_str());
-
-    std::vector<std::wstring> pattern_storage;
-    std::vector<COMDLG_FILTERSPEC> filter_specs;
-    for (const auto& filter : options.filters) {
-        pattern_storage.push_back(platform::windows::Utf8ToWide(filter.label));
-        pattern_storage.push_back(platform::windows::Utf8ToWide(filter.pattern));
-        filter_specs.push_back({pattern_storage[pattern_storage.size() - 2].c_str(),
-                                pattern_storage[pattern_storage.size() - 1].c_str()});
-    }
-    if (!filter_specs.empty()) {
-        dialog->SetFileTypes(static_cast<UINT>(filter_specs.size()), filter_specs.data());
-    }
+    ApplyFilterSpecs(dialog, options.filters);
     if (!options.default_name.empty()) {
         dialog->SetFileName(platform::windows::Utf8ToWide(options.default_name).c_str());
     }
@@ -107,31 +113,20 @@ std::optional<std::string> PlatformServices::SaveFile(void* parent_window, const
     if (dialog->Show(static_cast<HWND>(parent_window)) == S_OK) {
         IShellItem* item = nullptr;
         if (SUCCEEDED(dialog->GetResult(&item))) {
-            PWSTR path = nullptr;
-            if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &path))) {
-                saved = platform::windows::WideToUtf8(path);
-                CoTaskMemFree(path);
-            }
+            saved = ReadShellItemPath(item);
             item->Release();
         }
     }
 
     dialog->Release();
-    if (com_initialized) {
-        CoUninitialize();
-    }
     return saved;
 }
 
 std::optional<std::string> PlatformServices::PickFolder(void* parent_window, const std::string& title) {
-    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-    const bool com_initialized = SUCCEEDED(hr);
+    ComApartmentScope com;
 
     IFileOpenDialog* dialog = nullptr;
     if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)))) {
-        if (com_initialized) {
-            CoUninitialize();
-        }
         return std::nullopt;
     }
 
@@ -144,19 +139,12 @@ std::optional<std::string> PlatformServices::PickFolder(void* parent_window, con
     if (dialog->Show(static_cast<HWND>(parent_window)) == S_OK) {
         IShellItem* item = nullptr;
         if (SUCCEEDED(dialog->GetResult(&item))) {
-            PWSTR path = nullptr;
-            if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &path))) {
-                folder = platform::windows::WideToUtf8(path);
-                CoTaskMemFree(path);
-            }
+            folder = ReadShellItemPath(item);
             item->Release();
         }
     }
 
     dialog->Release();
-    if (com_initialized) {
-        CoUninitialize();
-    }
     return folder;
 }
 

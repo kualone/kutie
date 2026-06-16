@@ -30,12 +30,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
         };
     });
 
-    ipc.RegisterHandler("math.add", [](const nlohmann::json& payload) -> nlohmann::json {
-        const double a = payload.value("a", 0.0);
-        const double b = payload.value("b", 0.0);
-        return nlohmann::json{{"result", a + b}};
-    });
-
     ipc.RegisterHandler("system.info", [](const nlohmann::json&) -> nlohmann::json {
         SYSTEM_INFO info{};
         GetNativeSystemInfo(&info);

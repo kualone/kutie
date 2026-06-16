@@ -2,6 +2,7 @@
 
 #include "win_dpi.hpp"
 #include "win_frameless.hpp"
+#include "win_path_util.hpp"
 #include "win_string_util.hpp"
 #include "win_webview_host.hpp"
 
@@ -88,27 +89,9 @@ std::wstring MakeFallbackFolder(AssetBundle& assets) {
 }
 
 std::wstring ResolveFrontendFolder() {
-    WCHAR exe_path[MAX_PATH];
-    GetModuleFileNameW(nullptr, exe_path, MAX_PATH);
-    WCHAR* slash = wcsrchr(exe_path, L'\\');
-    if (slash) {
-        *slash = L'\0';
-    }
-
-    const std::vector<std::wstring> candidates = {
-        std::wstring(exe_path) + L"\\..\\..\\sample\\frontend",
-        std::wstring(exe_path) + L"\\frontend",
-    };
-
-    for (const auto& candidate : candidates) {
-        WCHAR absolute[MAX_PATH];
-        if (GetFullPathNameW(candidate.c_str(), MAX_PATH, absolute, nullptr)) {
-            if (GetFileAttributesW(absolute) != INVALID_FILE_ATTRIBUTES) {
-                return absolute;
-            }
-        }
-    }
-    return {};
+    const std::vector<std::wstring> candidates =
+        platform::windows::BuildFrontendCandidates({});
+    return platform::windows::ResolveExistingDirectory(candidates).value_or(L"");
 }
 
 HWND ResolveOwnerHwnd(uint32_t parent_id) {

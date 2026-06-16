@@ -8,6 +8,15 @@ namespace {
 
 thread_local uint32_t g_dispatch_source = 0;
 
+nlohmann::json MakeReplyEnvelope(int call_id, bool ok) {
+    nlohmann::json envelope;
+    envelope["v"] = 1;
+    envelope["type"] = "reply";
+    envelope["id"] = call_id;
+    envelope["ok"] = ok;
+    return envelope;
+}
+
 } // namespace
 
 IpcHub& IpcHub::Shared() {
@@ -49,11 +58,7 @@ std::string IpcHub::DispatchCall(
         std::lock_guard<std::mutex> lock(mutex_);
         const auto it = handlers_.find(name);
         if (it == handlers_.end()) {
-            nlohmann::json envelope;
-            envelope["v"] = 1;
-            envelope["type"] = "reply";
-            envelope["id"] = call_id;
-            envelope["ok"] = false;
+            auto envelope = MakeReplyEnvelope(call_id, false);
             envelope["error"] = "Unknown handler: " + name;
             return envelope.dump();
         }
@@ -65,19 +70,11 @@ std::string IpcHub::DispatchCall(
         nlohmann::json payload = payload_json.empty() ? nlohmann::json::object() : nlohmann::json::parse(payload_json);
         nlohmann::json data = handler(payload);
 
-        nlohmann::json envelope;
-        envelope["v"] = 1;
-        envelope["type"] = "reply";
-        envelope["id"] = call_id;
-        envelope["ok"] = true;
+        auto envelope = MakeReplyEnvelope(call_id, true);
         envelope["data"] = std::move(data);
         return envelope.dump();
     } catch (const std::exception& ex) {
-        nlohmann::json envelope;
-        envelope["v"] = 1;
-        envelope["type"] = "reply";
-        envelope["id"] = call_id;
-        envelope["ok"] = false;
+        auto envelope = MakeReplyEnvelope(call_id, false);
         envelope["error"] = ex.what();
         return envelope.dump();
     }

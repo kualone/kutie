@@ -11,6 +11,8 @@ if (-not (Test-Path $SampleExe)) {
     Write-Error "Sample not found: $SampleExe"
 }
 
+. "$PSScriptRoot\_ui_helpers.ps1"
+
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -21,26 +23,6 @@ public static class KutieWin32 {
     public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
 }
 "@
-
-Add-Type -AssemblyName UIAutomationClient
-Add-Type -AssemblyName UIAutomationTypes
-
-function Get-ProcessWindows($proc) {
-    $root = [System.Windows.Automation.AutomationElement]::RootElement
-    $cond = New-Object System.Windows.Automation.PropertyCondition(
-        [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $proc.Id)
-    return $root.FindAll([System.Windows.Automation.TreeScope]::Children, $cond)
-}
-
-function Find-InProcess($proc, [string]$name) {
-    foreach ($win in Get-ProcessWindows $proc) {
-        $btnCond = New-Object System.Windows.Automation.PropertyCondition(
-            [System.Windows.Automation.AutomationElement]::NameProperty, $name)
-        $match = $win.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $btnCond)
-        if ($match) { return $match }
-    }
-    return $null
-}
 
 function Find-TextContaining($proc, [string]$fragment) {
     foreach ($win in Get-ProcessWindows $proc) {
@@ -53,11 +35,6 @@ function Find-TextContaining($proc, [string]$fragment) {
         }
     }
     return $null
-}
-
-function Invoke-UiButton($element) {
-    $pattern = $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-    $pattern.Invoke()
 }
 
 Get-Process sample -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue

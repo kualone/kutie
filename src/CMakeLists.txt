@@ -7,12 +7,12 @@ add_library(kutie STATIC
     browser_window.cpp
     ipc_hub.cpp
     runtime.cpp
-    platform_services.cpp
     platform/windows/win_browser_window.cpp
     platform/windows/win_webview_host.cpp
     platform/windows/win_frameless.cpp
     platform/windows/win_dialog.cpp
     platform/windows/win_dpi.cpp
+    platform/windows/win_path_util.cpp
     platform/windows/win_string_util.cpp
 )
 

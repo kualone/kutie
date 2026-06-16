@@ -1,9 +1,7 @@
 #include "platform/windows/win_frameless.hpp"
 
 #include "kutie/browser_window.hpp"
-
-#include <cstdlib>
-#include <iostream>
+#include "test_util.hpp"
 
 namespace {
 
@@ -14,15 +12,8 @@ using kutie::platform::windows::BuildBaseWindowStyle;
 using kutie::platform::windows::BuildDecorationStyle;
 using kutie::platform::windows::MergeWindowStyle;
 using kutie::platform::windows::PartialDecorationTopOffset;
-
-int g_failures = 0;
-
-void Expect(bool condition, const char* message) {
-    if (!condition) {
-        std::cerr << "FAIL: " << message << '\n';
-        ++g_failures;
-    }
-}
+using kutie::test::Expect;
+using kutie::test::Finish;
 
 void TestBuildBaseWindowStyle() {
     BrowserWindowOptions native{};
@@ -113,12 +104,5 @@ int main() {
     TestPartialDecorationTopOffset();
     TestApplyPartialNcCalcRect();
     TestAdjustMinMaxInfoForWorkArea();
-
-    if (g_failures == 0) {
-        std::cout << "smoke_frameless: all tests passed\n";
-        return EXIT_SUCCESS;
-    }
-
-    std::cerr << "smoke_frameless: " << g_failures << " failure(s)\n";
-    return EXIT_FAILURE;
+    return Finish("smoke_frameless");
 }

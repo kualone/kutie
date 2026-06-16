@@ -1,7 +1,6 @@
 #include "win_webview_host.hpp"
 
-#include "win_string_util.hpp"
-
+#include <string>
 #include <wrl/event.h>
 
 using Microsoft::WRL::Callback;
