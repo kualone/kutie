@@ -64,7 +64,12 @@ Injected as `window.kutie`:
 | `kutie.call(name, payload?)` | Returns `Promise<data>` |
 | `kutie.on(event, fn)` | Subscribe; returns unsubscribe function |
 | `kutie.off(event, fn)` | Unsubscribe |
-| `kutie.window.startDrag()` | Native window drag (custom titlebar) |
+| `kutie.BrowserWindow.getCurrent()` | API object for the calling window |
+| `kutie.BrowserWindow.create(options)` | Create a new window |
+| `kutie.BrowserWindow.getAll()` | All window API objects |
+| `kutie.BrowserWindow.getFocused()` | Focused window or `null` |
+
+Window instance methods (`close`, `minimize`, `setFrame`, `startDrag`, …) call built-in `window.*` handlers with `{ id }`.
 
 ## Built-in Handlers
 
@@ -72,14 +77,15 @@ Registered by `Runtime`:
 
 | Name | Payload | Action |
 |---|---|---|
-| `shell.minimize` | — | Minimize window |
-| `shell.maximize` | — | Maximize window |
-| `shell.restore` | — | Restore window |
-| `shell.toggle_maximize` | — | Toggle maximize |
-| `shell.close` | — | Close window |
-| `shell.start_drag` | — | Start native drag (`WM_SYSCOMMAND SC_DRAGMOVE`) |
-| `shell.set_title` | `{ "title": "..." }` | Set title |
-| `shell.set_decorations` | `{ "decorations": bool }` | Toggle native titlebar |
+| `window.create` | `BrowserWindowOptions` fields | Create window → `{ id }` |
+| `window.close` | `{ "id"?: number }` | Close window (default: caller) |
+| `window.getAll` | — | `{ ids: [...] }` |
+| `window.getFocused` | — | `{ id: number }` (`0` if none) |
+| `window.show` / `window.hide` / `window.focus` | `{ "id"?: number }` | Visibility / focus |
+| `window.minimize` / `maximize` / `restore` / `toggleMaximize` | `{ "id"?: number }` | Window state |
+| `window.setTitle` | `{ "id"?, "title": "..." }` | Set title |
+| `window.setFrame` | `{ "id"?, "frame": bool }` | Native vs partial decoration |
+| `window.startDrag` | `{ "id"?: number }` | Native drag |
 
 ## C++ Registration
 

@@ -9,11 +9,12 @@ A lightweight C++ desktop framework powered by WebView2. Build modern desktop ap
 - **Single EXE deployment** — WebView2Loader statically linked; frontend assets embedded in the executable
 - **In-memory asset serving** — HTML/CSS/JS served from memory via `AssetBundle`; no temp files
 - **Bidirectional IPC** — Promise-style `kutie.call()` and event `kutie.on()` / C++ `broadcast()`
-- **Custom titlebar** — Frameless window mode with `data-kutie-drag-region` and `kutie.window.startDrag()`
-- **Window API** — title, size, position, minimize/maximize/restore, always-on-top, resizable, icon
+- **Custom titlebar** — Frameless window mode with `data-kutie-drag-region` and `kutie.BrowserWindow.getCurrent().startDrag()`
+- **BrowserWindow** — Electron-style multi-window API with modal support
+- **Window API** — title, size, position, minimize/maximize/restore, frame toggle, always-on-top, resizable
 - **Lifecycle callbacks** — close (veto), resize, minimize, maximize, focus
 - **File dialogs & clipboard** — open/save/folder picker, read/write clipboard
-- **DevTools** — F12 toggle when `config.shell.devtools = true`
+- **DevTools** — F12 toggle when `config.main_window.devtools = true`
 - **SPA fallback** — unknown routes serve `/index.html`
 - **Per-Monitor DPI V2** — crisp rendering on high-DPI displays
 - **Dark launch** — window and WebView2 background match your theme

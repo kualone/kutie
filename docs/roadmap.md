@@ -2,10 +2,11 @@
 
 ## Phase 1 — Windows (current)
 
-- [x] WebView2 backend (`WinShell`)
+- [x] WebView2 backend (`WinBrowserWindow`)
 - [x] IPC, asset embedding, sample app
 - [x] Custom titlebar
 - [x] Dialogs, clipboard, DPI, DevTools
+- [x] Multi-window + modal (`BrowserWindow`)
 
 ## Phase 2 — macOS
 
@@ -25,7 +26,7 @@
 ## Cross-cutting (future)
 
 - [ ] Portable `embedded_assets.cpp` generator (replace Windows-only `.rc` in shared builds)
-- [ ] Multi-window support
+- [ ] Runtime navigate / `loadURL` IPC
 - [ ] System tray / notifications
 - [ ] Auto-updater hooks
 

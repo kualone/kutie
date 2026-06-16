@@ -1,8 +1,9 @@
-#include "win_shell.hpp"
+#include "win_browser_window.hpp"
 
 #include "win_dpi.hpp"
 #include "win_frameless.hpp"
 #include "win_string_util.hpp"
+#include "win_webview_host.hpp"
 
 #include <dwmapi.h>
 #include <nlohmann/json.hpp>
@@ -19,7 +20,7 @@ namespace kutie {
 
 namespace {
 
-constexpr wchar_t kWindowClassName[] = L"KutieShellWindow";
+constexpr wchar_t kWindowClassName[] = L"KutieBrowserWindow";
 constexpr wchar_t kVirtualHost[] = L"assets.kutie";
 constexpr char kVirtualOrigin[] = "https://assets.kutie";
 
@@ -29,6 +30,7 @@ constexpr UINT WM_KUTIE_MINIMIZE = WM_USER + 3;
 constexpr UINT WM_KUTIE_MAXIMIZE = WM_USER + 4;
 constexpr UINT WM_KUTIE_RESTORE = WM_USER + 5;
 constexpr UINT WM_KUTIE_TOGGLE_MAXIMIZE = WM_USER + 6;
+
 std::wstring MakeFallbackFolder(AssetBundle& assets) {
     WCHAR temp_dir[MAX_PATH];
     GetTempPathW(MAX_PATH, temp_dir);
@@ -109,9 +111,20 @@ std::wstring ResolveFrontendFolder() {
     return {};
 }
 
+HWND ResolveOwnerHwnd(uint32_t parent_id) {
+    if (parent_id == 0) {
+        return nullptr;
+    }
+    BrowserWindow* parent = BrowserWindow::FromId(parent_id);
+    if (!parent) {
+        return nullptr;
+    }
+    return static_cast<HWND>(parent->NativeHandle());
+}
+
 } // namespace
 
-void WinShell::RegisterWindowClass() {
+void WinBrowserWindow::RegisterWindowClass() {
     WNDCLASSEXW window_class{};
     window_class.cbSize = sizeof(window_class);
     window_class.style = CS_HREDRAW | CS_VREDRAW;
@@ -123,14 +136,18 @@ void WinShell::RegisterWindowClass() {
     RegisterClassExW(&window_class);
 }
 
-WinShell::WinShell(const ShellConfig& config, AssetBundle& assets, IpcHub& ipc)
-    : config_(config)
+WinBrowserWindow::WinBrowserWindow(
+    uint32_t id,
+    BrowserWindowOptions options,
+    AssetBundle& assets,
+    IpcHub& ipc)
+    : BrowserWindow(id, std::move(options))
     , assets_(assets)
-    , ipc_(ipc) {
-}
+    , ipc_(ipc) {}
 
-WinShell::~WinShell() {
+WinBrowserWindow::~WinBrowserWindow() {
     shutting_down_ = true;
+    ipc_.DetachWindow(id_);
 
     if (webview_) {
         ComPtr<ICoreWebView2_2> webview2;
@@ -155,73 +172,68 @@ WinShell::~WinShell() {
     }
 }
 
-int WinShell::Run() {
-    platform::windows::EnsurePerMonitorDpiAwareness();
-
-    const HRESULT com_hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-    const bool com_initialized = SUCCEEDED(com_hr) || com_hr == RPC_E_CHANGED_MODE;
-
+void WinBrowserWindow::Initialize() {
     if (!CreateWindowHandle()) {
         MessageBoxW(nullptr, L"Failed to create the application window.", L"Kutie", MB_OK | MB_ICONERROR);
-        if (com_initialized) {
-            CoUninitialize();
-        }
-        return 1;
+        NotifyDestroyed();
+        return;
     }
 
-    // Show immediately while WebView2 initializes.
-    ShowWindow(hwnd_, SW_SHOW);
-    UpdateWindow(hwnd_);
-    visible_requested_ = true;
-
-    if (!InitializeWebView()) {
-        MessageBoxW(
-            hwnd_,
-            L"Failed to start WebView2. Install the Microsoft Edge WebView2 Runtime and try again.",
-            L"Kutie",
-            MB_OK | MB_ICONERROR);
-        if (com_initialized) {
-            CoUninitialize();
-        }
-        return 1;
+    if (options_.show) {
+        ShowWindow(hwnd_, SW_SHOW);
+        UpdateWindow(hwnd_);
+        visible_requested_ = true;
     }
 
-    MSG message{};
-    while (GetMessageW(&message, nullptr, 0, 0) > 0) {
-        TranslateMessage(&message);
-        DispatchMessageW(&message);
-    }
-
-    if (com_initialized) {
-        CoUninitialize();
-    }
-    return static_cast<int>(message.wParam);
+    InitializeWebView();
 }
 
-void WinShell::Close() {
+void WinBrowserWindow::Close() {
     if (hwnd_) {
         PostMessageW(hwnd_, WM_CLOSE, 0, 0);
     }
 }
 
-void WinShell::ExecuteScript(const std::string& script) {
+void WinBrowserWindow::ExecuteScript(const std::string& script) {
     if (!webview_ || !webview_ready_ || shutting_down_) {
         return;
     }
     webview_->ExecuteScript(platform::windows::Utf8ToWide(script).c_str(), nullptr);
 }
 
-void WinShell::SetTitle(const std::string& title) {
-    config_.title = title;
+void WinBrowserWindow::Show() {
+    if (hwnd_) {
+        ShowWindow(hwnd_, SW_SHOW);
+        UpdateWindow(hwnd_);
+        visible_requested_ = true;
+    }
+}
+
+void WinBrowserWindow::Hide() {
+    if (hwnd_) {
+        ShowWindow(hwnd_, SW_HIDE);
+    }
+}
+
+void WinBrowserWindow::Focus() {
+    if (hwnd_) {
+        SetForegroundWindow(hwnd_);
+    }
+}
+
+void WinBrowserWindow::SetTitle(const std::string& title) {
+    options_.title = title;
     if (hwnd_) {
         SetWindowTextW(hwnd_, platform::windows::Utf8ToWide(title).c_str());
     }
 }
 
-void WinShell::SetSize(int width, int height) {
+void WinBrowserWindow::SetSize(int width, int height) {
     if (!hwnd_) {
         return;
     }
+    options_.width = width;
+    options_.height = height;
     const DWORD style = GetWindowLongW(hwnd_, GWL_STYLE);
     RECT rect{0, 0, width, height};
     AdjustWindowRect(&rect, style, FALSE);
@@ -235,75 +247,54 @@ void WinShell::SetSize(int width, int height) {
         SWP_NOMOVE | SWP_NOZORDER);
 }
 
-void WinShell::SetPosition(int x, int y) {
+void WinBrowserWindow::SetPosition(int x, int y) {
     if (hwnd_) {
         SetWindowPos(hwnd_, nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
     }
 }
 
-void WinShell::SetAlwaysOnTop(bool on_top) {
-    config_.always_on_top = on_top;
-    if (hwnd_) {
-        SetWindowPos(
-            hwnd_,
-            on_top ? HWND_TOPMOST : HWND_NOTOPMOST,
-            0,
-            0,
-            0,
-            0,
-            SWP_NOMOVE | SWP_NOSIZE);
-    }
-}
-
-void WinShell::SetResizable(bool resizable) {
-    config_.resizable = resizable;
+void WinBrowserWindow::SetResizable(bool resizable) {
+    options_.resizable = resizable;
     ScheduleApplyWindowStyle();
 }
 
-void WinShell::SetDecorations(bool decorations) {
-    config_.decorations = decorations;
+void WinBrowserWindow::SetFrame(bool frame) {
+    options_.frame = frame;
     ScheduleApplyWindowStyle();
 }
 
-void WinShell::SetIcon(void* icon_handle) {
-    if (hwnd_ && icon_handle) {
-        SendMessageW(hwnd_, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(icon_handle));
-        SendMessageW(hwnd_, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(icon_handle));
-    }
-}
-
-void WinShell::Minimize() {
+void WinBrowserWindow::Minimize() {
     if (hwnd_) {
         PostMessageW(hwnd_, WM_KUTIE_MINIMIZE, 0, 0);
     }
 }
 
-void WinShell::Maximize() {
+void WinBrowserWindow::Maximize() {
     if (hwnd_) {
         PostMessageW(hwnd_, WM_KUTIE_MAXIMIZE, 0, 0);
     }
 }
 
-void WinShell::Restore() {
+void WinBrowserWindow::Restore() {
     if (hwnd_) {
         PostMessageW(hwnd_, WM_KUTIE_RESTORE, 0, 0);
     }
 }
 
-void WinShell::ToggleMaximize() {
+void WinBrowserWindow::ToggleMaximize() {
     if (hwnd_) {
         PostMessageW(hwnd_, WM_KUTIE_TOGGLE_MAXIMIZE, 0, 0);
     }
 }
 
-void WinShell::StartDrag() {
+void WinBrowserWindow::StartDrag() {
     if (!hwnd_) {
         return;
     }
     PostMessageW(hwnd_, WM_KUTIE_START_DRAG, 0, 0);
 }
 
-void WinShell::ToggleDevTools() {
+void WinBrowserWindow::ToggleDevTools() {
     if (!webview_) {
         return;
     }
@@ -313,42 +304,36 @@ void WinShell::ToggleDevTools() {
     }
 }
 
-bool WinShell::IsMinimized() const {
-    return hwnd_ && IsIconic(hwnd_);
+void WinBrowserWindow::OnClose(CloseHandler handler) {
+    BrowserWindow::OnClose(std::move(handler));
 }
 
-bool WinShell::IsMaximized() const {
-    return hwnd_ && IsZoomed(hwnd_);
+void WinBrowserWindow::OnResize(ResizeHandler handler) {
+    BrowserWindow::OnResize(std::move(handler));
 }
 
-bool WinShell::IsFocused() const {
-    return hwnd_ && GetForegroundWindow() == hwnd_;
-}
-
-void WinShell::OnClose(CloseHandler handler) { on_close_ = std::move(handler); }
-void WinShell::OnResize(ResizeHandler handler) { on_resize_ = std::move(handler); }
-void WinShell::OnMinimize(StateHandler handler) { on_minimize_ = std::move(handler); }
-void WinShell::OnMaximize(StateHandler handler) { on_maximize_ = std::move(handler); }
-void WinShell::OnFocus(StateHandler handler) { on_focus_ = std::move(handler); }
-
-void* WinShell::NativeHandle() const {
+void* WinBrowserWindow::NativeHandle() const {
     return hwnd_;
 }
 
-bool WinShell::CreateWindowHandle() {
+bool WinBrowserWindow::CreateWindowHandle() {
     static bool window_class_registered = false;
     if (!window_class_registered) {
         RegisterWindowClass();
         window_class_registered = true;
     }
 
+    HWND owner = ResolveOwnerHwnd(options_.parent_id);
+    if (options_.modal && owner) {
+        modal_parent_hwnd_ = owner;
+    }
+
     const UINT dpi = platform::windows::GetSystemDpi();
-    const int width = MulDiv(config_.width, dpi, 96);
-    const int height = MulDiv(config_.height, dpi, 96);
+    const int width = MulDiv(options_.width, dpi, 96);
+    const int height = MulDiv(options_.height, dpi, 96);
 
-    DWORD style = WS_OVERLAPPED | platform::windows::BuildDecorationStyle(config_);
-
-    DWORD ex_style = config_.always_on_top ? WS_EX_TOPMOST : 0;
+    DWORD style = WS_OVERLAPPED | platform::windows::BuildDecorationStyle(options_);
+    DWORD ex_style = options_.always_on_top ? WS_EX_TOPMOST : 0;
     RECT rect{0, 0, width, height};
 
     using AdjustWindowRectExForDpiFn = BOOL(WINAPI*)(LPRECT, DWORD, BOOL, DWORD, UINT);
@@ -361,7 +346,7 @@ bool WinShell::CreateWindowHandle() {
 
     int x = CW_USEDEFAULT;
     int y = CW_USEDEFAULT;
-    if (config_.center) {
+    if (options_.center) {
         const int screen_w = GetSystemMetrics(SM_CXSCREEN);
         const int screen_h = GetSystemMetrics(SM_CYSCREEN);
         x = (screen_w - (rect.right - rect.left)) / 2;
@@ -371,13 +356,13 @@ bool WinShell::CreateWindowHandle() {
     hwnd_ = CreateWindowExW(
         ex_style,
         kWindowClassName,
-        platform::windows::Utf8ToWide(config_.title).c_str(),
+        platform::windows::Utf8ToWide(options_.title).c_str(),
         style,
         x,
         y,
         rect.right - rect.left,
         rect.bottom - rect.top,
-        nullptr,
+        owner,
         nullptr,
         GetModuleHandleW(nullptr),
         this);
@@ -386,94 +371,94 @@ bool WinShell::CreateWindowHandle() {
         return false;
     }
 
-    platform::windows::ApplyFramelessDwmChrome(hwnd_, config_);
+    platform::windows::ApplyFramelessDwmChrome(hwnd_, options_);
 
-    return hwnd_ != nullptr;
+    if (options_.modal && modal_parent_hwnd_) {
+        EnableWindow(modal_parent_hwnd_, FALSE);
+        modal_locked_ = true;
+    }
+
+    return true;
 }
 
-bool WinShell::InitializeWebView() {
-    WCHAR temp_dir[MAX_PATH];
-    GetTempPathW(MAX_PATH, temp_dir);
-    const std::wstring user_data = std::wstring(temp_dir) + L"kutie_webview2_" + std::to_wstring(GetCurrentProcessId());
+void WinBrowserWindow::InitializeWebView() {
+    WinWebViewHost::Instance().EnsureReady([this](HRESULT result, ICoreWebView2Environment* environment) {
+        if (FAILED(result) || !environment || !hwnd_) {
+            ShowStartupError(L"WebView2 environment failed to initialize.");
+            return;
+        }
 
-    const HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(
-        nullptr,
-        user_data.c_str(),
-        nullptr,
-        Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
-            [this](HRESULT result, ICoreWebView2Environment* environment) -> HRESULT {
-                if (FAILED(result)) {
-                    ShowStartupError(L"WebView2 environment failed to initialize.");
-                    return result;
-                }
+        environment_ = environment;
+        environment_->AddRef();
 
-                environment_ = environment;
-                environment_->AddRef();
+        environment->CreateCoreWebView2Controller(
+            hwnd_,
+            Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+                [this](HRESULT controller_result, ICoreWebView2Controller* controller) -> HRESULT {
+                    if (FAILED(controller_result)) {
+                        ShowStartupError(L"WebView2 controller failed to initialize.");
+                        return controller_result;
+                    }
 
-                return environment->CreateCoreWebView2Controller(
-                    hwnd_,
-                    Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-                        [this](HRESULT controller_result, ICoreWebView2Controller* controller) -> HRESULT {
-                            if (FAILED(controller_result)) {
-                                ShowStartupError(L"WebView2 controller failed to initialize.");
-                                return controller_result;
-                            }
+                    controller_ = controller;
+                    controller_->AddRef();
+                    controller_->get_CoreWebView2(&webview_);
+                    if (webview_) {
+                        webview_->AddRef();
+                    }
 
-                            controller_ = controller;
-                            controller_->AddRef();
-                            controller_->get_CoreWebView2(&webview_);
-                            if (webview_) {
-                                webview_->AddRef();
-                            }
+                    UpdateWebViewBounds();
+                    ConfigureResourceServing();
+                    ConfigureIpcBridge();
 
-                            UpdateWebViewBounds();
+                    webview_->Navigate(platform::windows::Utf8ToWide(options_.url).c_str());
+                    webview_->add_NavigationCompleted(
+                        Callback<ICoreWebView2NavigationCompletedEventHandler>(
+                            [this](ICoreWebView2*, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
+                                BOOL success = FALSE;
+                                if (args) {
+                                    args->get_IsSuccess(&success);
+                                }
+                                if (!success) {
+                                    ShowStartupError(L"Failed to load the application UI.");
+                                }
+                                UpdateWebViewBounds();
+                                ShowWhenReady();
+                                return S_OK;
+                            })
+                            .Get(),
+                        &tokens_.navigation_completed);
 
-                            ConfigureResourceServing();
-                            ConfigureIpcBridge();
-
-                            webview_->Navigate(platform::windows::Utf8ToWide(config_.entry_url).c_str());
-                            webview_->add_NavigationCompleted(
-                                Callback<ICoreWebView2NavigationCompletedEventHandler>(
-                                    [this](ICoreWebView2*, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
-                                        BOOL success = FALSE;
-                                        if (args) {
-                                            args->get_IsSuccess(&success);
-                                        }
-                                        if (!success) {
-                                            ShowStartupError(L"Failed to load the application UI.");
-                                        }
-                                        UpdateWebViewBounds();
-                                        ShowWhenReady();
-                                        return S_OK;
-                                    })
-                                    .Get(),
-                                &tokens_.navigation_completed);
-
-                            webview_ready_ = true;
-                            return S_OK;
-                        })
-                        .Get());
-            })
-            .Get());
-
-    return SUCCEEDED(hr);
+                    webview_ready_ = true;
+                    return S_OK;
+                })
+                .Get());
+    });
 }
 
-void WinShell::ScheduleApplyWindowStyle() {
+void WinBrowserWindow::ReleaseModalLock() {
+    if (modal_locked_ && modal_parent_hwnd_) {
+        EnableWindow(modal_parent_hwnd_, TRUE);
+        SetForegroundWindow(modal_parent_hwnd_);
+        modal_locked_ = false;
+        modal_parent_hwnd_ = nullptr;
+    }
+}
+
+void WinBrowserWindow::ScheduleApplyWindowStyle() {
     if (!hwnd_) {
         return;
     }
-    // Defer style changes out of the WebView2 IPC callback stack.
     PostMessageW(hwnd_, WM_KUTIE_APPLY_STYLE, 0, 0);
 }
 
-void WinShell::ApplyWindowStyle() {
+void WinBrowserWindow::ApplyWindowStyle() {
     if (!hwnd_) {
         return;
     }
 
     DWORD style = static_cast<DWORD>(GetWindowLongPtrW(hwnd_, GWL_STYLE));
-    style = platform::windows::MergeWindowStyle(style, config_);
+    style = platform::windows::MergeWindowStyle(style, options_);
     SetWindowLongPtrW(hwnd_, GWL_STYLE, static_cast<LONG_PTR>(style));
     SetWindowPos(
         hwnd_,
@@ -484,10 +469,10 @@ void WinShell::ApplyWindowStyle() {
         0,
         SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
-    platform::windows::ApplyFramelessDwmChrome(hwnd_, config_);
+    platform::windows::ApplyFramelessDwmChrome(hwnd_, options_);
 }
 
-void WinShell::UpdateWebViewBounds() {
+void WinBrowserWindow::UpdateWebViewBounds() {
     if (!controller_ || !hwnd_) {
         return;
     }
@@ -496,7 +481,7 @@ void WinShell::UpdateWebViewBounds() {
     controller_->put_Bounds(client);
 }
 
-void WinShell::ConfigureResourceServing() {
+void WinBrowserWindow::ConfigureResourceServing() {
     if (!webview_) {
         return;
     }
@@ -585,12 +570,12 @@ void WinShell::ConfigureResourceServing() {
         &tokens_.web_resource_requested);
 }
 
-void WinShell::ConfigureIpcBridge() {
+void WinBrowserWindow::ConfigureIpcBridge() {
     if (!webview_) {
         return;
     }
 
-    ipc_.SetScriptRunner([this](const std::string& script) { ExecuteScript(script); });
+    ipc_.AttachWindow(id_, [this](const std::string& script) { ExecuteScript(script); });
 
     ComPtr<ICoreWebView2_2> webview2;
     if (SUCCEEDED(webview_->QueryInterface(IID_PPV_ARGS(&webview2)))) {
@@ -612,10 +597,10 @@ void WinShell::ConfigureIpcBridge() {
                             return S_OK;
                         }
 
-                        const int id = parsed.value("id", 0);
+                        const int call_id = parsed.value("id", 0);
                         const std::string name = parsed.value("name", "");
                         const std::string payload = parsed.contains("payload") ? parsed["payload"].dump() : "{}";
-                        const std::string reply = ipc_.DispatchCall(id, name, payload);
+                        const std::string reply = ipc_.DispatchCall(id_, call_id, name, payload);
                         sender->PostWebMessageAsJson(platform::windows::Utf8ToWide(reply).c_str());
                     } catch (...) {
                     }
@@ -627,13 +612,13 @@ void WinShell::ConfigureIpcBridge() {
 
     ComPtr<ICoreWebView2_5> webview5;
     if (SUCCEEDED(webview_->QueryInterface(IID_PPV_ARGS(&webview5)))) {
-        const std::wstring bootstrap = platform::windows::Utf8ToWide(IpcHub::ClientBootstrapScript());
+        const std::wstring bootstrap = platform::windows::Utf8ToWide(IpcHub::ClientBootstrapScript(id_));
         webview5->AddScriptToExecuteOnDocumentCreated(bootstrap.c_str(), nullptr);
     } else {
         webview_->add_NavigationCompleted(
             Callback<ICoreWebView2NavigationCompletedEventHandler>(
                 [this](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs*) -> HRESULT {
-                    const std::wstring bootstrap = platform::windows::Utf8ToWide(IpcHub::ClientBootstrapScript());
+                    const std::wstring bootstrap = platform::windows::Utf8ToWide(IpcHub::ClientBootstrapScript(id_));
                     sender->ExecuteScript(bootstrap.c_str(), nullptr);
                     return S_OK;
                 })
@@ -642,8 +627,8 @@ void WinShell::ConfigureIpcBridge() {
     }
 }
 
-void WinShell::ShowWhenReady() {
-    if (!hwnd_) {
+void WinBrowserWindow::ShowWhenReady() {
+    if (!hwnd_ || !options_.show) {
         return;
     }
     if (!visible_requested_) {
@@ -653,7 +638,7 @@ void WinShell::ShowWhenReady() {
     }
 }
 
-void WinShell::ShowStartupError(const wchar_t* message) {
+void WinBrowserWindow::ShowStartupError(const wchar_t* message) {
     if (!hwnd_) {
         return;
     }
@@ -661,34 +646,28 @@ void WinShell::ShowStartupError(const wchar_t* message) {
     MessageBoxW(hwnd_, message, L"Kutie", MB_OK | MB_ICONERROR);
 }
 
-LRESULT CALLBACK WinShell::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
-    WinShell* shell = nullptr;
+LRESULT CALLBACK WinBrowserWindow::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
+    WinBrowserWindow* window = nullptr;
 
     if (message == WM_NCCREATE) {
         const auto* create = reinterpret_cast<CREATESTRUCTW*>(lparam);
-        shell = reinterpret_cast<WinShell*>(create->lpCreateParams);
-        SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(shell));
+        window = reinterpret_cast<WinBrowserWindow*>(create->lpCreateParams);
+        SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(window));
     } else {
-        shell = reinterpret_cast<WinShell*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+        window = reinterpret_cast<WinBrowserWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
     }
 
-    if (!shell) {
+    if (!window) {
         return DefWindowProcW(hwnd, message, wparam, lparam);
     }
 
     switch (message) {
     case WM_SIZE:
-        shell->UpdateWebViewBounds();
-        if (shell->on_resize_ && wparam != SIZE_MINIMIZED) {
+        window->UpdateWebViewBounds();
+        if (window->on_resize_ && wparam != SIZE_MINIMIZED) {
             RECT client{};
             GetClientRect(hwnd, &client);
-            shell->on_resize_(client.right, client.bottom);
-        }
-        if (wparam == SIZE_MINIMIZED && shell->on_minimize_) {
-            shell->on_minimize_();
-        }
-        if (wparam == SIZE_MAXIMIZED && shell->on_maximize_) {
-            shell->on_maximize_();
+            window->on_resize_(client.right, client.bottom);
         }
         return 0;
 
@@ -704,20 +683,14 @@ LRESULT CALLBACK WinShell::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LP
                 suggested->bottom - suggested->top,
                 SWP_NOZORDER | SWP_NOACTIVATE);
         }
-        if (shell->controller_) {
-            shell->UpdateWebViewBounds();
+        if (window->controller_) {
+            window->UpdateWebViewBounds();
         }
         return 0;
     }
 
-    case WM_ACTIVATE:
-        if (shell->on_focus_ && LOWORD(wparam) != WA_INACTIVE) {
-            shell->on_focus_();
-        }
-        return 0;
-
     case WM_GETMINMAXINFO:
-        if (!shell->config_.decorations) {
+        if (!window->options_.frame) {
             auto* minmax = reinterpret_cast<MINMAXINFO*>(lparam);
             MONITORINFO monitor_info{};
             monitor_info.cbSize = sizeof(monitor_info);
@@ -735,15 +708,15 @@ LRESULT CALLBACK WinShell::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LP
     case WM_NCCALCSIZE: {
         const bool maximized = IsZoomed(hwnd) != FALSE;
         if (const auto result = platform::windows::HandleFramelessNcCalcSize(
-                hwnd, wparam, lparam, shell->config_, maximized)) {
+                hwnd, wparam, lparam, window->options_, maximized)) {
             return *result;
         }
         break;
     }
 
     case WM_KUTIE_APPLY_STYLE:
-        shell->ApplyWindowStyle();
-        shell->UpdateWebViewBounds();
+        window->ApplyWindowStyle();
+        window->UpdateWebViewBounds();
         InvalidateRect(hwnd, nullptr, TRUE);
         return 0;
 
@@ -769,19 +742,23 @@ LRESULT CALLBACK WinShell::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LP
         return 0;
 
     case WM_CLOSE:
-        if (shell->on_close_ && !shell->on_close_()) {
+        if (window->on_close_ && !window->on_close_()) {
             return 0;
         }
         break;
 
     case WM_DESTROY:
-        shell->shutting_down_ = true;
-        PostQuitMessage(0);
+        window->shutting_down_ = true;
+        window->ReleaseModalLock();
+        window->NotifyDestroyed();
+        if (BrowserWindow::GetAll().empty()) {
+            PostQuitMessage(0);
+        }
         return 0;
 
     case WM_KEYDOWN:
-        if (wparam == VK_F12 && shell->config_.devtools) {
-            shell->ToggleDevTools();
+        if (wparam == VK_F12 && window->options_.devtools) {
+            window->ToggleDevTools();
         }
         return 0;
     }

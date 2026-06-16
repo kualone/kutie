@@ -12,7 +12,7 @@ https://assets.kutie/styles/main.css
 https://assets.kutie/scripts/app.js
 ```
 
-Configure via `ShellConfig::entry_url` (default above).
+Configure via `BrowserWindowOptions::url` (default above).
 
 ## Build-time Embedding
 

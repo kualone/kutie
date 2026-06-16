@@ -57,29 +57,46 @@ async function init() {
     setOutput('greet-output', result);
   });
 
-  document.getElementById('btn-minimize').addEventListener('click', () => kutie.call('shell.minimize'));
-  document.getElementById('btn-maximize').addEventListener('click', () => kutie.call('shell.maximize'));
-  document.getElementById('btn-restore').addEventListener('click', () => kutie.call('shell.restore'));
+  const current = () => kutie.BrowserWindow.getCurrent();
+
+  document.getElementById('btn-minimize').addEventListener('click', () => current().minimize());
+  document.getElementById('btn-maximize').addEventListener('click', () => current().maximize());
+  document.getElementById('btn-restore').addEventListener('click', () => current().restore());
 
   document.getElementById('btn-native-titlebar').addEventListener('click', async () => {
-    await kutie.call('shell.set_decorations', { decorations: true });
+    await current().setFrame(true);
     setTitlebarMode(false);
   });
 
   document.getElementById('btn-custom-titlebar').addEventListener('click', async () => {
-    await kutie.call('shell.set_decorations', { decorations: false });
+    await current().setFrame(false);
     setTitlebarMode(true);
   });
 
   document.getElementById('btn-theme-dark').addEventListener('click', () => setTheme('dark'));
   document.getElementById('btn-theme-light').addEventListener('click', () => setTheme('light'));
 
+  document.getElementById('btn-open-modal').addEventListener('click', async () => {
+    const parent = current();
+    await kutie.BrowserWindow.create({
+      title: 'Modal Dialog',
+      url: 'https://assets.kutie/dialog.html',
+      width: 420,
+      height: 280,
+      parent_id: parent.id,
+      modal: true,
+      frame: false,
+      center: true,
+    });
+    logEvent('modal opened');
+  });
+
   document.querySelectorAll('[data-action]').forEach((button) => {
     button.addEventListener('click', () => {
       const action = button.getAttribute('data-action');
-      if (action === 'minimize') kutie.call('shell.minimize');
-      if (action === 'maximize') kutie.call('shell.toggle_maximize');
-      if (action === 'close') kutie.call('shell.close');
+      if (action === 'minimize') current().minimize();
+      if (action === 'maximize') current().toggleMaximize();
+      if (action === 'close') current().close();
     });
   });
 

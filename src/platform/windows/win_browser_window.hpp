@@ -1,48 +1,43 @@
 #pragma once
 
 #include "kutie/asset_bundle.hpp"
+#include "kutie/browser_window.hpp"
 #include "kutie/ipc_hub.hpp"
-#include "kutie/shell.hpp"
 
 #include <WebView2.h>
 #include <atomic>
-#include <memory>
 
 namespace kutie {
 
-class WinShell final : public IShell {
+class WinBrowserWindow final : public BrowserWindow {
 public:
-    WinShell(const ShellConfig& config, AssetBundle& assets, IpcHub& ipc);
-    ~WinShell() override;
+    WinBrowserWindow(
+        uint32_t id,
+        BrowserWindowOptions options,
+        AssetBundle& assets,
+        IpcHub& ipc);
+    ~WinBrowserWindow() override;
 
-    int Run() override;
+    void Initialize();
+
     void Close() override;
-    void ExecuteScript(const std::string& script) override;
-
+    void Show() override;
+    void Hide() override;
+    void Focus() override;
     void SetTitle(const std::string& title) override;
     void SetSize(int width, int height) override;
     void SetPosition(int x, int y) override;
-    void SetAlwaysOnTop(bool on_top) override;
     void SetResizable(bool resizable) override;
-    void SetDecorations(bool decorations) override;
-    void SetIcon(void* icon_handle) override;
+    void SetFrame(bool frame) override;
     void Minimize() override;
     void Maximize() override;
     void Restore() override;
     void ToggleMaximize() override;
     void StartDrag() override;
     void ToggleDevTools() override;
-
-    bool IsMinimized() const override;
-    bool IsMaximized() const override;
-    bool IsFocused() const override;
-
+    void ExecuteScript(const std::string& script) override;
     void OnClose(CloseHandler handler) override;
     void OnResize(ResizeHandler handler) override;
-    void OnMinimize(StateHandler handler) override;
-    void OnMaximize(StateHandler handler) override;
-    void OnFocus(StateHandler handler) override;
-
     void* NativeHandle() const override;
 
 private:
@@ -54,7 +49,7 @@ private:
     };
 
     bool CreateWindowHandle();
-    bool InitializeWebView();
+    void InitializeWebView();
     void ApplyWindowStyle();
     void ScheduleApplyWindowStyle();
     void UpdateWebViewBounds();
@@ -62,15 +57,16 @@ private:
     void ConfigureIpcBridge();
     void ShowWhenReady();
     void ShowStartupError(const wchar_t* message);
+    void ReleaseModalLock();
 
     static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
     static void RegisterWindowClass();
 
-    ShellConfig config_;
     AssetBundle& assets_;
     IpcHub& ipc_;
 
     HWND hwnd_ = nullptr;
+    HWND modal_parent_hwnd_ = nullptr;
     ICoreWebView2* webview_ = nullptr;
     ICoreWebView2Controller* controller_ = nullptr;
     ICoreWebView2Environment* environment_ = nullptr;
@@ -79,12 +75,7 @@ private:
     std::atomic<bool> shutting_down_{false};
     bool webview_ready_ = false;
     bool visible_requested_ = false;
-
-    CloseHandler on_close_;
-    ResizeHandler on_resize_;
-    StateHandler on_minimize_;
-    StateHandler on_maximize_;
-    StateHandler on_focus_;
+    bool modal_locked_ = false;
 };
 
 } // namespace kutie

@@ -130,7 +130,7 @@ cmake --build build
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     kutie::Runtime::Config cfg;
-    cfg.shell.title = "我的应用";
+    cfg.main_window.title = "我的应用";
     // 可选：开发时磁盘回退路径
     // cfg.dev_frontend_path = "C:/dev/myapp/frontend";
 

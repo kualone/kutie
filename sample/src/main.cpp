@@ -1,5 +1,6 @@
-#include "kutie/platform_services.hpp"
 #include "kutie/runtime.hpp"
+
+#include "kutie/platform_services.hpp"
 
 #include <Windows.h>
 #include <nlohmann/json.hpp>
@@ -11,12 +12,12 @@
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     kutie::Runtime::Config config;
-    config.shell.title = "Kutie Demo";
-    config.shell.width = 960;
-    config.shell.height = 720;
-    config.shell.center = true;
-    config.shell.devtools = true;
-    config.shell.decorations = true;
+    config.main_window.title = "Kutie Demo";
+    config.main_window.width = 960;
+    config.main_window.height = 720;
+    config.main_window.center = true;
+    config.main_window.devtools = true;
+    config.main_window.frame = true;
 
     kutie::Runtime app(config);
     auto& ipc = app.ipc();
@@ -83,7 +84,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
     static std::atomic<bool> heartbeat_running{true};
     app.OnReady([&app](kutie::Runtime&) {
-        app.shell().OnClose([]() {
+        if (kutie::BrowserWindow::GetAll().empty()) {
+            return;
+        }
+        kutie::BrowserWindow::GetAll().front()->OnClose([]() {
             heartbeat_running = false;
             return true;
         });

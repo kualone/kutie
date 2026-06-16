@@ -4,9 +4,19 @@
 
 namespace kutie {
 
+namespace {
+
+thread_local uint32_t g_dispatch_source = 0;
+
+} // namespace
+
 IpcHub& IpcHub::Shared() {
     static IpcHub instance;
     return instance;
+}
+
+uint32_t IpcHub::CurrentDispatchSource() {
+    return g_dispatch_source;
 }
 
 void IpcHub::RegisterHandler(const std::string& name, Handler handler) {
@@ -19,7 +29,21 @@ void IpcHub::UnregisterHandler(const std::string& name) {
     handlers_.erase(name);
 }
 
-std::string IpcHub::DispatchCall(int id, const std::string& name, const std::string& payload_json) {
+void IpcHub::AttachWindow(uint32_t window_id, ScriptRunner runner) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    window_runners_[window_id] = std::move(runner);
+}
+
+void IpcHub::DetachWindow(uint32_t window_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    window_runners_.erase(window_id);
+}
+
+std::string IpcHub::DispatchCall(
+    uint32_t source_id,
+    int call_id,
+    const std::string& name,
+    const std::string& payload_json) {
     Handler handler;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -28,7 +52,7 @@ std::string IpcHub::DispatchCall(int id, const std::string& name, const std::str
             nlohmann::json envelope;
             envelope["v"] = 1;
             envelope["type"] = "reply";
-            envelope["id"] = id;
+            envelope["id"] = call_id;
             envelope["ok"] = false;
             envelope["error"] = "Unknown handler: " + name;
             return envelope.dump();
@@ -36,6 +60,7 @@ std::string IpcHub::DispatchCall(int id, const std::string& name, const std::str
         handler = it->second;
     }
 
+    g_dispatch_source = source_id;
     try {
         nlohmann::json payload = payload_json.empty() ? nlohmann::json::object() : nlohmann::json::parse(payload_json);
         nlohmann::json data = handler(payload);
@@ -43,7 +68,7 @@ std::string IpcHub::DispatchCall(int id, const std::string& name, const std::str
         nlohmann::json envelope;
         envelope["v"] = 1;
         envelope["type"] = "reply";
-        envelope["id"] = id;
+        envelope["id"] = call_id;
         envelope["ok"] = true;
         envelope["data"] = std::move(data);
         return envelope.dump();
@@ -51,7 +76,7 @@ std::string IpcHub::DispatchCall(int id, const std::string& name, const std::str
         nlohmann::json envelope;
         envelope["v"] = 1;
         envelope["type"] = "reply";
-        envelope["id"] = id;
+        envelope["id"] = call_id;
         envelope["ok"] = false;
         envelope["error"] = ex.what();
         return envelope.dump();
@@ -59,13 +84,10 @@ std::string IpcHub::DispatchCall(int id, const std::string& name, const std::str
 }
 
 void IpcHub::Broadcast(const std::string& event, const nlohmann::json& data) {
-    ScriptRunner runner;
+    std::unordered_map<uint32_t, ScriptRunner> runners;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        runner = script_runner_;
-    }
-    if (!runner) {
-        return;
+        runners = window_runners_;
     }
 
     nlohmann::json envelope;
@@ -74,17 +96,33 @@ void IpcHub::Broadcast(const std::string& event, const nlohmann::json& data) {
     envelope["name"] = event;
     envelope["data"] = data;
 
-    runner("window.__kutie_deliver__(" + envelope.dump() + ");");
+    const std::string script = "window.__kutie_deliver__(" + envelope.dump() + ");";
+    for (const auto& entry : runners) {
+        entry.second(script);
+    }
 }
 
-void IpcHub::SetScriptRunner(ScriptRunner runner) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    script_runner_ = std::move(runner);
-}
+std::string IpcHub::ClientBootstrapScript(uint32_t window_id) {
+    std::ostringstream script;
+    script << R"js(
+(function(windowId) {
+    function makeWindowApi(id) {
+        return {
+            id: id,
+            close: function() { return kutie.call('window.close', { id: id }); },
+            show: function() { return kutie.call('window.show', { id: id }); },
+            hide: function() { return kutie.call('window.hide', { id: id }); },
+            focus: function() { return kutie.call('window.focus', { id: id }); },
+            minimize: function() { return kutie.call('window.minimize', { id: id }); },
+            maximize: function() { return kutie.call('window.maximize', { id: id }); },
+            restore: function() { return kutie.call('window.restore', { id: id }); },
+            toggleMaximize: function() { return kutie.call('window.toggleMaximize', { id: id }); },
+            setTitle: function(title) { return kutie.call('window.setTitle', { id: id, title: title }); },
+            setFrame: function(frame) { return kutie.call('window.setFrame', { id: id, frame: frame }); },
+            startDrag: function() { return kutie.call('window.startDrag', { id: id }); }
+        };
+    }
 
-std::string IpcHub::ClientBootstrapScript() {
-    return R"js(
-(function() {
     const kutie = {
         _seq: 0,
         _pending: {},
@@ -117,12 +155,6 @@ std::string IpcHub::ClientBootstrapScript() {
                 return;
             }
             this._listeners[event] = this._listeners[event].filter(fn => fn !== callback);
-        },
-
-        window: {
-            startDrag: function() {
-                return kutie.call('shell.start_drag');
-            }
         }
     };
 
@@ -198,7 +230,7 @@ std::string IpcHub::ClientBootstrapScript() {
                         Math.abs(e.clientY - startY) >= dragThreshold) {
                         dragStarted = true;
                         cleanup();
-                        kutie.window.startDrag();
+                        kutie.BrowserWindow.getCurrent().startDrag();
                     }
                 }
 
@@ -214,21 +246,43 @@ std::string IpcHub::ClientBootstrapScript() {
                     if (isInteractiveTarget(event)) {
                         return;
                     }
-                    kutie.call('shell.toggle_maximize');
+                    kutie.BrowserWindow.getCurrent().toggleMaximize();
                 });
             }
         });
     }
 
-    const observer = new MutationObserver(bindDragRegions);
+    kutie.BrowserWindow = {
+        getCurrent: function() { return makeWindowApi(windowId); },
+        getAll: function() {
+            return kutie.call('window.getAll').then(function(result) {
+                return (result.ids || []).map(makeWindowApi);
+            });
+        },
+        getFocused: function() {
+            return kutie.call('window.getFocused').then(function(result) {
+                return result.id ? makeWindowApi(result.id) : null;
+            });
+        },
+        create: function(options) {
+            return kutie.call('window.create', options || {}).then(function(result) {
+                return makeWindowApi(result.id);
+            });
+        }
+    };
+
     document.addEventListener('DOMContentLoaded', function() {
         bindDragRegions();
+        const observer = new MutationObserver(bindDragRegions);
         observer.observe(document.documentElement, { childList: true, subtree: true });
     });
 
     window.kutie = kutie;
-})();
+})(
 )js";
+    script << window_id;
+    script << ");\n";
+    return script.str();
 }
 
 } // namespace kutie

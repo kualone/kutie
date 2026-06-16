@@ -1,8 +1,8 @@
 #pragma once
 
 #include "asset_bundle.hpp"
+#include "browser_window.hpp"
 #include "ipc_hub.hpp"
-#include "shell.hpp"
 #include <functional>
 #include <memory>
 
@@ -11,7 +11,7 @@ namespace kutie {
 class Runtime {
 public:
     struct Config {
-        ShellConfig shell;
+        BrowserWindowOptions main_window;
         /// Optional disk fallback path for development (UTF-8). When empty, uses {exe_dir}/frontend.
         std::string dev_frontend_path;
     };
@@ -29,14 +29,12 @@ public:
 
     IpcHub& ipc() { return IpcHub::Shared(); }
     AssetBundle& assets() { return AssetBundle::Shared(); }
-    IShell& shell() { return *shell_; }
 
 private:
     void LoadAssets();
     void RegisterBuiltInHandlers();
 
     Config config_;
-    std::unique_ptr<IShell> shell_;
     ReadyHandler ready_handler_;
 };
 

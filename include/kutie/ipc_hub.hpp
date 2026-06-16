@@ -37,18 +37,21 @@ public:
         });
     }
 
-    std::string DispatchCall(int id, const std::string& name, const std::string& payload_json);
+    void AttachWindow(uint32_t window_id, ScriptRunner runner);
+    void DetachWindow(uint32_t window_id);
+
+    std::string DispatchCall(uint32_t source_id, int call_id, const std::string& name, const std::string& payload_json);
     void Broadcast(const std::string& event, const nlohmann::json& data);
 
-    void SetScriptRunner(ScriptRunner runner);
-    static std::string ClientBootstrapScript();
+    static uint32_t CurrentDispatchSource();
+    static std::string ClientBootstrapScript(uint32_t window_id);
 
 private:
     IpcHub() = default;
 
     mutable std::mutex mutex_;
     std::unordered_map<std::string, Handler> handlers_;
-    ScriptRunner script_runner_;
+    std::unordered_map<uint32_t, ScriptRunner> window_runners_;
 };
 
 } // namespace kutie

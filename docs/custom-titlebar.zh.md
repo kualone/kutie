@@ -2,7 +2,7 @@
 
 Kutie 采用 **partial decoration**（部分装饰）模型实现自定义标题栏，与 [Saucer `decoration::partial`](https://saucer.github.io/window/decorations/) 思路一致：标题栏由前端 HTML 绘制，缩放边框、Aero Snap 与阴影由系统原生提供。
 
-| | 自定义标题栏（`decorations = false`） | 原生（`decorations = true`） |
+| | 自定义标题栏（`frame = false`） | 原生（`frame = true`） |
 |---|---|---|
 | 标题栏 | 前端 HTML | 系统 |
 | 缩放边框 | OS 原生（`WS_THICKFRAME`） | OS 原生 |
@@ -15,14 +15,14 @@ Kutie 采用 **partial decoration**（部分装饰）模型实现自定义标题
 
 ```cpp
 kutie::Runtime::Config cfg;
-cfg.shell.decorations = false;
-cfg.shell.shadow = true;
+cfg.main_window.frame = false;
+cfg.main_window.shadow = true;
 ```
 
 ### 运行时切换
 
 ```javascript
-await kutie.call('shell.set_decorations', { decorations: false });
+await kutie.BrowserWindow.getCurrent().setFrame(false);
 ```
 
 ## HTML 模板
@@ -31,9 +31,9 @@ await kutie.call('shell.set_decorations', { decorations: false });
 <div class="titlebar" data-kutie-drag-region>
   <span class="title">My App</span>
   <div class="controls">
-    <button onclick="kutie.call('shell.minimize')">—</button>
-    <button onclick="kutie.call('shell.toggle_maximize')">□</button>
-    <button onclick="kutie.call('shell.close')">×</button>
+    <button onclick="kutie.BrowserWindow.getCurrent().minimize()">—</button>
+    <button onclick="kutie.BrowserWindow.getCurrent().toggleMaximize()">□</button>
+    <button onclick="kutie.BrowserWindow.getCurrent().close()">×</button>
   </div>
 </div>
 ```
@@ -45,7 +45,7 @@ await kutie.call('shell.set_decorations', { decorations: false });
 | `data-kutie-drag-region` | DOM 就绪后自动绑定（推荐） |
 | `data-kutie-drag-region="no-maximize"` | 仅拖拽，禁用双击最大化 |
 | `data-kutie-no-drag` | 拖拽区域内的子元素不参与拖拽 |
-| `kutie.window.startDrag()` | 在自定义 `mousedown` 中手动拖拽 |
+| `kutie.BrowserWindow.getCurrent().startDrag()` | 在自定义 `mousedown` 中手动拖拽 |
 
 拖拽区域内对 `button`、`a`、`input`、`select`、`textarea` 的点击**不会**触发拖拽。在拖拽区域（非交互子元素）上双击可切换最大化。指针移动约 4 px 后才开始拖拽，避免双击被吞掉。
 
@@ -53,7 +53,7 @@ await kutie.call('shell.set_decorations', { decorations: false });
 
 ## 缩放边框
 
-**无需前端代码。** 当 `decorations = false` 且 `resizable = true` 时，Kutie 保留 `WS_THICKFRAME`，并在 `WM_NCCALCSIZE` 中将原生缩放环置于 WebView2 客户区之外。直接拖拽窗口边缘或角落即可缩放。
+**无需前端代码。** 当 `frame = false` 且 `resizable = true` 时，Kutie 保留 `WS_THICKFRAME`，并在 `WM_NCCALCSIZE` 中将原生缩放环置于 WebView2 客户区之外。直接拖拽窗口边缘或角落即可缩放。
 
 **Win10 说明：** 顶部边框可能无法原生拖拽缩放。左、右、底边与四角正常。
 
@@ -92,20 +92,20 @@ await kutie.call('shell.set_decorations', { decorations: false });
 
 ## 窗口控制
 
-内置 IPC：
+内置 IPC（通过 `kutie.BrowserWindow.getCurrent()`）：
 
-- `shell.minimize`
-- `shell.maximize` / `shell.restore`
-- `shell.toggle_maximize`
-- `shell.close`
+- `window.minimize`
+- `window.maximize` / `window.restore`
+- `window.toggleMaximize`
+- `window.close`
 
 ## 与 Tauri 的差异
 
 | Tauri | Kutie |
 |---|---|
-| `decorations: false` | `cfg.shell.decorations = false` |
+| `decorations: false` | `cfg.main_window.frame = false` |
 | `data-tauri-drag-region` | `data-kutie-drag-region` |
-| `window.startDragging()` | `kutie.window.startDrag()` |
+| `window.startDragging()` | `kutie.BrowserWindow.getCurrent().startDrag()` |
 | 权限 / allowlist | 无 allowlist；在 C++ 注册 handler |
 
 ## 示例

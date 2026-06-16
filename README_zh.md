@@ -9,8 +9,9 @@
 - **单 EXE 部署** — WebView2Loader 静态链接，前端资源嵌入可执行文件
 - **内存资源服务** — `AssetBundle` 从内存提供 HTML/CSS/JS，不写入临时文件
 - **双向 IPC** — `kutie.call()` Promise 风格调用，C++ `broadcast()` 推送事件
-- **自定义标题栏** — `decorations=false` + `data-kutie-drag-region` 拖拽区域
-- **窗口 API** — 标题、尺寸、位置、最小化/最大化、置顶、可调整大小等
+- **自定义标题栏** — `frame=false` + `data-kutie-drag-region` 拖拽区域
+- **BrowserWindow** — 类似 Electron 的多窗口 API，支持 modal
+- **窗口 API** — 标题、尺寸、位置、最小化/最大化、frame 切换、置顶、可调整大小等
 - **生命周期回调** — 关闭（可否决）、resize、minimize、maximize、focus
 - **文件对话框与剪贴板**
 - **DevTools** — F12 切换（需 `devtools=true`）
@@ -52,7 +53,7 @@
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     kutie::Runtime::Config cfg;
-    cfg.shell.title = "我的应用";
+    cfg.main_window.title = "我的应用";
     kutie::Runtime app(cfg);
 
     app.ipc().RegisterHandler("greet", [](const nlohmann::json& args) {

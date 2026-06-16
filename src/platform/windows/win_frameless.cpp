@@ -4,7 +4,7 @@
 
 namespace kutie::platform::windows {
 
-DWORD BuildDecorationStyle(const ShellConfig& config) {
+DWORD BuildDecorationStyle(const BrowserWindowOptions& config) {
     DWORD style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
     if (config.resizable) {
         style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
@@ -12,19 +12,19 @@ DWORD BuildDecorationStyle(const ShellConfig& config) {
     return style;
 }
 
-DWORD MergeWindowStyle(DWORD current_style, const ShellConfig& config) {
+DWORD MergeWindowStyle(DWORD current_style, const BrowserWindowOptions& config) {
     DWORD style = current_style;
     style &= ~kDecorationStyleMask;
     style |= BuildDecorationStyle(config);
     return style;
 }
 
-void ApplyFramelessDwmChrome(HWND hwnd, const ShellConfig& config) {
+void ApplyFramelessDwmChrome(HWND hwnd, const BrowserWindowOptions& config) {
     if (!hwnd) {
         return;
     }
 
-    if (config.decorations) {
+    if (config.frame) {
         const MARGINS margins{};
         DwmExtendFrameIntoClientArea(hwnd, &margins);
         return;
@@ -54,9 +54,9 @@ std::optional<LRESULT> HandleFramelessNcCalcSize(
     HWND hwnd,
     WPARAM wparam,
     LPARAM lparam,
-    const ShellConfig& config,
+    const BrowserWindowOptions& config,
     bool maximized) {
-    if (config.decorations || wparam == FALSE) {
+    if (config.frame || wparam == FALSE) {
         return std::nullopt;
     }
 

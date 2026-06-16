@@ -1,6 +1,6 @@
 # Windows 后端
 
-Kutie 一期通过 Win32 + WebView2 实现 `IShell`（`WinShell`）。
+Kutie 一期通过 Win32 + WebView2 实现 `BrowserWindow`（`WinBrowserWindow`）。
 
 ## 初始化顺序
 
@@ -10,7 +10,7 @@ Kutie 一期通过 Win32 + WebView2 实现 `IShell`（`WinShell`）。
 4. `CreateCoreWebView2Controller`
 5. 映射虚拟主机 `assets.kutie` 并安装 `WebResourceRequested` 过滤器
 6. 注入 IPC 引导脚本（`AddScriptToExecuteOnDocumentCreated`）
-7. 导航至 `entry_url`
+7. 导航至 `url`
 8. 首次导航完成后显示窗口
 
 ## 资源拦截
@@ -22,12 +22,12 @@ Kutie 一期通过 Win32 + WebView2 实现 `IShell`（`WinShell`）。
 
 ## 无边框窗口（partial decoration）
 
-当 `decorations = false` 时（Saucer 风格 partial decoration）：
+当 `frame = false` 时（Saucer 风格 partial decoration）：
 
 - 样式：`WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX`，可缩放时含 `WS_THICKFRAME`（与 Saucer `decoration::partial` 一致）
 - `WM_NCCALCSIZE`：按 `WINDOWINFO` 内缩左/右/底边框；最大化且顶部 rect 为负时，按边框高度做顶部偏移
 - `DwmExtendFrameIntoClientArea`：顶框延伸 2 px；缩放边框颜色使用系统默认
-- 拖拽：`shell.start_drag` → `WM_SYSCOMMAND SC_DRAGMOVE`
+- 拖拽：`window.startDrag` → `WM_SYSCOMMAND SC_DRAGMOVE`
 - 缩放：通过 `WS_THICKFRAME` 由 OS 原生边框拖拽（无需 IPC）
 - **Win10：** 顶部边框可能无法原生拖拽缩放（Saucer 同样取舍）
 

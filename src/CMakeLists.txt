@@ -4,11 +4,12 @@ kutie_require_static_webview2()
 
 add_library(kutie STATIC
     asset_bundle.cpp
+    browser_window.cpp
     ipc_hub.cpp
     runtime.cpp
     platform_services.cpp
-    platform/shell_factory.cpp
-    platform/windows/win_shell.cpp
+    platform/windows/win_browser_window.cpp
+    platform/windows/win_webview_host.cpp
     platform/windows/win_frameless.cpp
     platform/windows/win_dialog.cpp
     platform/windows/win_dpi.cpp

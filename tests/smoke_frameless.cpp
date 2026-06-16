@@ -1,11 +1,13 @@
 #include "platform/windows/win_frameless.hpp"
 
+#include "kutie/browser_window.hpp"
+
 #include <cstdlib>
 #include <iostream>
 
 namespace {
 
-using kutie::ShellConfig;
+using kutie::BrowserWindowOptions;
 using kutie::platform::windows::AdjustMinMaxInfoForWorkArea;
 using kutie::platform::windows::ApplyPartialNcCalcRect;
 using kutie::platform::windows::BuildDecorationStyle;
@@ -22,15 +24,15 @@ void Expect(bool condition, const char* message) {
 }
 
 void TestBuildDecorationStyle() {
-    ShellConfig config{};
+    BrowserWindowOptions config{};
     config.resizable = true;
 
-    config.decorations = true;
+    config.frame = true;
     const DWORD native_style = BuildDecorationStyle(config);
     Expect((native_style & WS_CAPTION) != 0, "native mode keeps WS_CAPTION");
     Expect((native_style & WS_THICKFRAME) != 0, "native resizable keeps WS_THICKFRAME");
 
-    config.decorations = false;
+    config.frame = false;
     const DWORD partial_style = BuildDecorationStyle(config);
     Expect((partial_style & WS_CAPTION) != 0, "partial decoration keeps WS_CAPTION like Saucer");
     Expect((partial_style & WS_THICKFRAME) != 0, "partial resizable keeps WS_THICKFRAME");
@@ -42,8 +44,8 @@ void TestBuildDecorationStyle() {
 }
 
 void TestMergeWindowStylePreservesVisible() {
-    ShellConfig partial{};
-    partial.decorations = false;
+    BrowserWindowOptions partial{};
+    partial.frame = false;
     partial.resizable = true;
     const DWORD merged = MergeWindowStyle(WS_OVERLAPPED | WS_VISIBLE | WS_CAPTION | WS_SYSMENU, partial);
     Expect((merged & WS_VISIBLE) != 0, "MergeWindowStyle preserves WS_VISIBLE");

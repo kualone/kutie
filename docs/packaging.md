@@ -130,7 +130,7 @@ cmake --build build
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     kutie::Runtime::Config cfg;
-    cfg.shell.title = "My App";
+    cfg.main_window.title = "My App";
     // Optional dev disk fallback override:
     // cfg.dev_frontend_path = "C:/dev/myapp/frontend";
 

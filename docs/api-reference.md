@@ -4,25 +4,54 @@
 
 ```cpp
 kutie::Runtime::Config cfg;
-cfg.shell.title = "App";
-cfg.shell.width = 1024;
-cfg.shell.height = 768;
-cfg.shell.center = true;
-cfg.shell.resizable = true;
-cfg.shell.always_on_top = false;
-cfg.shell.devtools = true;
-cfg.shell.decorations = true;
-cfg.shell.shadow = true;
-cfg.shell.entry_url = "https://assets.kutie/index.html";
+cfg.main_window.title = "App";
+cfg.main_window.width = 1024;
+cfg.main_window.height = 768;
+cfg.main_window.center = true;
+cfg.main_window.resizable = true;
+cfg.main_window.always_on_top = false;
+cfg.main_window.devtools = true;
+cfg.main_window.frame = true;
+cfg.main_window.shadow = true;
+cfg.main_window.url = "https://assets.kutie/index.html";
 
 kutie::Runtime app(cfg);
-app.OnReady([](kutie::Runtime& rt) { /* before message loop */ });
+app.OnReady([](kutie::Runtime& rt) { /* after main window is created */ });
 int code = app.Run();
 
 app.ipc();    // IpcHub&
 app.assets(); // AssetBundle&
-app.shell();  // IShell&
 ```
+
+## BrowserWindow
+
+```cpp
+kutie::BrowserWindow& main = kutie::BrowserWindow::Create(options);
+main.Close();
+main.SetTitle("New title");
+main.SetFrame(false);
+
+kutie::BrowserWindow* win = kutie::BrowserWindow::FromId(1);
+auto all = kutie::BrowserWindow::GetAll();
+auto* focused = kutie::BrowserWindow::GetFocused();
+```
+
+| Method | Description |
+|---|---|
+| `Create(options)` | Create window; returns new instance |
+| `FromId(id)` / `GetAll()` / `GetFocused()` | Registry queries |
+| `Close()` | Request close |
+| `Show()` / `Hide()` / `Focus()` | Visibility and focus |
+| `ExecuteScript(js)` | Run JS in WebView |
+| `SetTitle` / `SetSize` / `SetPosition` | Geometry |
+| `SetResizable` / `SetFrame` | Window flags |
+| `Minimize` / `Maximize` / `Restore` / `ToggleMaximize` | State |
+| `StartDrag()` | Native drag via `WM_SYSCOMMAND SC_DRAGMOVE` |
+| `ToggleDevTools()` | DevTools window |
+| `OnClose` / `OnResize` | Lifecycle callbacks |
+| `NativeHandle()` | `HWND` on Windows |
+
+See [features/browser-window.md](features/browser-window.md).
 
 ## IpcHub
 
@@ -47,22 +76,6 @@ bundle.Paths();
 bundle.Empty();
 ```
 
-## IShell
-
-| Method | Description |
-|---|---|
-| `Run()` | Message loop |
-| `Close()` | Request close |
-| `ExecuteScript(js)` | Run JS in WebView |
-| `SetTitle` / `SetSize` / `SetPosition` | Geometry |
-| `SetAlwaysOnTop` / `SetResizable` | Window flags |
-| `SetDecorations(bool)` | Native vs partial decoration (custom titlebar) |
-| `Minimize` / `Maximize` / `Restore` / `ToggleMaximize` | State |
-| `StartDrag()` | Native drag via `WM_SYSCOMMAND SC_DRAGMOVE` |
-| `ToggleDevTools()` | DevTools window |
-| `OnClose` / `OnResize` / … | Lifecycle callbacks |
-| `NativeHandle()` | `HWND` on Windows |
-
 ## PlatformServices
 
 ```cpp
@@ -81,11 +94,14 @@ PlatformServices::AskConfirm(hwnd, title, message);
 ```javascript
 await kutie.call('handler.name', { key: 'value' });
 const off = kutie.on('event.name', (data) => {});
-kutie.off('event.name', handler);
-await kutie.window.startDrag();
+
+const win = kutie.BrowserWindow.getCurrent();
+await win.minimize();
+await win.setFrame(false);
+await kutie.BrowserWindow.create({ title: 'Dialog', url: '...', parent_id: win.id, modal: true });
 ```
 
-## ShellConfig Fields
+## BrowserWindowOptions Fields
 
 | Field | Default | Description |
 |---|---|---|
@@ -94,7 +110,10 @@ await kutie.window.startDrag();
 | `center` | `true` | Center on screen |
 | `resizable` | `true` | Resize handles |
 | `always_on_top` | `false` | Topmost window |
+| `show` | `true` | Show when ready |
 | `devtools` | `false` | F12 DevTools |
-| `decorations` | `true` | Native titlebar |
-| `shadow` | `true` | DWM shadow and rounded corners when using partial decoration |
-| `entry_url` | `https://assets.kutie/index.html` | Initial navigation |
+| `frame` | `true` | Native titlebar |
+| `shadow` | `true` | DWM shadow |
+| `url` | `https://assets.kutie/index.html` | Initial navigation |
+| `parent_id` | `0` | Parent window id |
+| `modal` | `false` | Modal child (requires `parent_id`) |

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modal Dialog</title>
+  <link rel="stylesheet" href="/styles/main.css">
+  <style>
+    body { margin: 0; padding: 1rem; }
+    .dialog-card { max-width: 100%; }
+  </style>
+</head>
+<body>
+  <section class="card dialog-card">
+    <h2>Modal Dialog</h2>
+    <p>This is a modal BrowserWindow. The parent window is disabled until you close this dialog.</p>
+    <button id="btn-close" type="button">Close dialog</button>
+  </section>
+  <script>
+    document.getElementById('btn-close').addEventListener('click', () => {
+      kutie.BrowserWindow.getCurrent().close();
+    });
+  </script>
+</body>
+</html>
