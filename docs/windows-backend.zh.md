@@ -26,7 +26,7 @@ Kutie 一期通过 Win32 + WebView2 实现 `IShell`（`WinShell`）。
 当 `decorations = false` 时（Saucer 风格 partial decoration）：
 
 - 样式：`WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX`，可缩放时含 `WS_THICKFRAME`（与 Saucer `decoration::partial` 一致）
-- `WM_NCCALCSIZE`：按 `WINDOWINFO` 内缩左/右/底边框；Windows 11 在顶部额外偏移 1 px，使标题栏按钮贴齐客户区上沿
+- `WM_NCCALCSIZE`：按 `WINDOWINFO` 内缩左/右/底边框；最大化且顶部 rect 为负时，按边框高度做顶部偏移
 - `DwmExtendFrameIntoClientArea`：顶框延伸 2 px；`DWMWA_BORDER_COLOR` 与 `shell.background` 一致
 - 拖拽：`shell.start_drag` → `WM_SYSCOMMAND SC_DRAGMOVE`
 - 缩放：通过 `WS_THICKFRAME` 由 OS 原生边框拖拽（无需 IPC）

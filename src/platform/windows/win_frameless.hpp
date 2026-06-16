@@ -19,9 +19,9 @@ COLORREF ShellBorderColor(const ShellConfig& config);
 void ApplyFramelessDwmChrome(HWND hwnd, const ShellConfig& config);
 void AdjustMinMaxInfoForWorkArea(MINMAXINFO* minmax, const RECT& work_area, const RECT& monitor_area);
 
-LONG PartialDecorationTopOffset(bool win11_or_greater, bool maximized, LONG rect_top, LONG border_y);
+LONG PartialDecorationTopOffset(bool maximized, LONG rect_top, LONG border_y);
 
-// Saucer partial-decoration client rect: optional top offset, side/bottom border insets.
+// Saucer partial-decoration client rect: side/bottom border insets; top offset only when maximized.
 RECT ApplyPartialNcCalcRect(RECT rect, POINT borders, LONG top_offset);
 
 // std::nullopt => DefWindowProc; 0 => handled.

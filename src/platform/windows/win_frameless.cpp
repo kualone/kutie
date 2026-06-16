@@ -1,7 +1,5 @@
 #include "win_frameless.hpp"
 
-#include "win_dpi.hpp"
-
 #include <dwmapi.h>
 
 #ifndef DWMWA_BORDER_COLOR
@@ -48,10 +46,9 @@ void ApplyFramelessDwmChrome(HWND hwnd, const ShellConfig& config) {
     DwmExtendFrameIntoClientArea(hwnd, &margins);
 }
 
-LONG PartialDecorationTopOffset(bool win11_or_greater, bool maximized, LONG rect_top, LONG border_y) {
-    const bool keep = !maximized || rect_top >= 0;
-    if (keep) {
-        return win11_or_greater ? 1L : 0L;
+LONG PartialDecorationTopOffset(bool maximized, LONG rect_top, LONG border_y) {
+    if (!maximized || rect_top >= 0) {
+        return 0L;
     }
     return border_y;
 }
@@ -87,8 +84,7 @@ std::optional<LRESULT> HandleFramelessNcCalcSize(
         static_cast<LONG>(info.cxWindowBorders),
         static_cast<LONG>(info.cyWindowBorders),
     };
-    const LONG top_offset =
-        PartialDecorationTopOffset(IsWindows11OrGreater(), maximized, rect->top, borders.y);
+    const LONG top_offset = PartialDecorationTopOffset(maximized, rect->top, borders.y);
     *rect = ApplyPartialNcCalcRect(*rect, borders, top_offset);
     return 0;
 }

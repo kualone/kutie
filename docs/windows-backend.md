@@ -26,7 +26,7 @@ Kutie Phase 1 implements `IShell` as `WinShell` using Win32 and WebView2.
 When `decorations = false` (Saucer-style partial decoration):
 
 - Style: `WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME` when `resizable = true` (same as Saucer `decoration::partial`)
-- `WM_NCCALCSIZE`: inset left/right/bottom by `WINDOWINFO` borders; on Windows 11 add a 1 px top offset so caption buttons align with the client edge
+- `WM_NCCALCSIZE`: inset left/right/bottom by `WINDOWINFO` borders; when maximized with a negative top rect, add a top offset equal to the border height
 - `DwmExtendFrameIntoClientArea`: top margin 2 px for titlebar blend; `DWMWA_BORDER_COLOR` matches `shell.background`
 - Drag: `shell.start_drag` → `WM_SYSCOMMAND SC_DRAGMOVE`
 - Resize: OS native border drag via `WS_THICKFRAME` (no IPC required)

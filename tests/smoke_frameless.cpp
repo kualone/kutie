@@ -53,23 +53,22 @@ void TestMergeWindowStylePreservesVisible() {
 }
 
 void TestPartialDecorationTopOffset() {
-    Expect(PartialDecorationTopOffset(true, false, 0, 8) == 1, "Win11 windowed uses 1px top offset");
-    Expect(PartialDecorationTopOffset(false, false, 0, 8) == 0, "Win10 windowed keeps 0px top offset");
-    Expect(PartialDecorationTopOffset(true, true, -1, 8) == 8, "maximized negative top uses border height");
-    Expect(PartialDecorationTopOffset(true, true, 0, 8) == 1, "maximized non-negative top keeps Win11 offset");
+    Expect(PartialDecorationTopOffset(false, 0, 8) == 0, "windowed keeps 0px top offset");
+    Expect(PartialDecorationTopOffset(true, -1, 8) == 8, "maximized negative top uses border height");
+    Expect(PartialDecorationTopOffset(true, 0, 8) == 0, "maximized non-negative top keeps 0px offset");
 }
 
 void TestApplyPartialNcCalcRect() {
     const RECT input{0, 0, 800, 600};
     const POINT borders{8, 8};
 
-    const RECT win11 = ApplyPartialNcCalcRect(input, borders, 1);
-    Expect(win11.top == 1, "partial client applies top offset");
-    Expect(win11.left == 8 && win11.right == 792, "partial client insets left and right");
-    Expect(win11.bottom == 592, "partial client insets bottom");
+    const RECT partial = ApplyPartialNcCalcRect(input, borders, 0);
+    Expect(partial.top == 0, "partial client keeps top at origin");
+    Expect(partial.left == 8 && partial.right == 792, "partial client insets left and right");
+    Expect(partial.bottom == 592, "partial client insets bottom");
 
-    const RECT win10 = ApplyPartialNcCalcRect(input, borders, 0);
-    Expect(win10.top == 0, "Win10 partial keeps client top at origin");
+    const RECT maximized = ApplyPartialNcCalcRect(input, borders, 8);
+    Expect(maximized.top == 8, "maximized negative top applies border height offset");
 }
 
 void TestShellBorderColor() {
