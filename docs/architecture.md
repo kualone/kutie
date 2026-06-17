@@ -45,3 +45,5 @@ Phase 2 adds macOS `BrowserWindow` backend (WKWebView + titlebar overlay).
 Phase 3 adds Linux `BrowserWindow` backend (WebKitGTK).
 
 See [roadmap.md](roadmap.md).
+
+See also [architecture.zh.md](architecture.zh.md) (Chinese).

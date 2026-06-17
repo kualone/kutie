@@ -68,8 +68,8 @@ kutie/
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     kutie::Runtime::Config cfg;
-    cfg.shell.title = "My App";
-    cfg.shell.devtools = true;
+    cfg.main_window.title = "My App";
+    cfg.main_window.devtools = true;
 
     kutie::Runtime app(cfg);
     app.ipc().RegisterHandler("greet", [](const nlohmann::json& payload) {
@@ -90,12 +90,12 @@ kutie.on('heartbeat', (data) => console.log(data));
 ### Custom Titlebar
 
 ```cpp
-cfg.shell.decorations = false;  // frameless window
+cfg.main_window.frame = false;  // custom titlebar (partial decoration)
 ```
 
 ```html
 <div class="titlebar" data-kutie-drag-region>
-  <button onclick="kutie.call('shell.close')">×</button>
+  <button onclick="kutie.BrowserWindow.getCurrent().close()">×</button>
 </div>
 ```
 
@@ -104,7 +104,7 @@ See [docs/custom-titlebar.md](docs/custom-titlebar.md).
 ## Architecture
 
 ```
-Runtime → IpcHub + AssetBundle + IShell (WinShell / WebView2)
+Runtime → IpcHub + AssetBundle + BrowserWindow (WinBrowserWindow / WebView2)
 ```
 
 Details: [docs/architecture.md](docs/architecture.md)
@@ -114,6 +114,7 @@ Details: [docs/architecture.md](docs/architecture.md)
 | Document | Description |
 |---|---|
 | [architecture.md](docs/architecture.md) | Module design |
+| [features/browser-window.md](docs/features/browser-window.md) | Multi-window API |
 | [ipc-protocol.md](docs/ipc-protocol.md) | IPC envelope format |
 | [asset-bundling.md](docs/asset-bundling.md) | Dev/prod asset loading |
 | [windows-backend.md](docs/windows-backend.md) | WebView2 backend |
@@ -129,7 +130,7 @@ Details: [docs/architecture.md](docs/architecture.md)
 |---|---|---|---|---|
 | Backend | C++ | Node.js | Rust | C# |
 | Renderer | WebView2 | Chromium | System WebView | DirectX |
-| Binary size | ~1–10 MB | 100+ MB | 3–10 MB | .NET required |
+| Binary size | ~1 MB | 100+ MB | 3–10 MB | .NET required |
 | Phase 1 platform | Windows | All | All | Windows |
 
 ## License

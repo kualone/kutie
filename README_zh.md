@@ -56,8 +56,9 @@
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     kutie::Runtime::Config cfg;
     cfg.main_window.title = "我的应用";
-    kutie::Runtime app(cfg);
+    cfg.main_window.devtools = true;
 
+    kutie::Runtime app(cfg);
     app.ipc().RegisterHandler("greet", [](const nlohmann::json& args) {
         return nlohmann::json{{"message", "你好, " + args.value("name", "World")}};
     });
@@ -72,17 +73,42 @@ const res = await kutie.call('greet', { name: 'Kutie' });
 kutie.on('heartbeat', (data) => console.log(data));
 ```
 
+### 自定义标题栏
+
+```cpp
+cfg.main_window.frame = false;  // 自定义标题栏（partial decoration）
+```
+
+```html
+<div class="titlebar" data-kutie-drag-region>
+  <button onclick="kutie.BrowserWindow.getCurrent().close()">×</button>
+</div>
+```
+
+详见 [docs/custom-titlebar.zh.md](docs/custom-titlebar.zh.md)。
+
+## 架构
+
+```
+Runtime → IpcHub + AssetBundle + BrowserWindow (WinBrowserWindow / WebView2)
+```
+
+详见 [docs/architecture.zh.md](docs/architecture.zh.md)。
+
 ## 文档
 
-- [架构](docs/architecture.md)
-- [IPC 协议](docs/ipc-protocol.md)
-- [资源打包](docs/asset-bundling.md)
-- [Windows 后端](docs/windows-backend.md)
-- [自定义标题栏](docs/custom-titlebar.md)
-- [API 参考](docs/api-reference.md)
-- [打包与引用](docs/packaging.zh.md)
-- [路线图](docs/roadmap.md)
-- [更新日志](CHANGELOG.md)
+| 文档 | 说明 |
+|---|---|
+| [architecture.zh.md](docs/architecture.zh.md) | 模块设计 |
+| [features/browser-window.zh.md](docs/features/browser-window.zh.md) | 多窗口 API |
+| [ipc-protocol.zh.md](docs/ipc-protocol.zh.md) | IPC 协议 |
+| [asset-bundling.md](docs/asset-bundling.md) | 资源打包 |
+| [windows-backend.zh.md](docs/windows-backend.zh.md) | WebView2 后端 |
+| [custom-titlebar.zh.md](docs/custom-titlebar.zh.md) | 自定义标题栏 |
+| [api-reference.md](docs/api-reference.md) | API 参考 |
+| [packaging.zh.md](docs/packaging.zh.md) | 打包与引用 |
+| [roadmap.md](docs/roadmap.md) | 路线图 |
+| [CHANGELOG.md](CHANGELOG.md) | 更新日志 |
 
 ## 许可证
 
