@@ -174,12 +174,15 @@ std::string IpcHub::ClientBootstrapScript(uint32_t window_id) {
         }
         if (envelope.type === 'event' && envelope.name) {
             const listeners = kutie._listeners[envelope.name] || [];
+            const data = envelope.data;
             listeners.forEach(function(callback) {
-                try {
-                    callback(envelope.data);
-                } catch (error) {
-                    console.error('[Kutie] listener error:', error);
-                }
+                setTimeout(function() {
+                    try {
+                        callback(data);
+                    } catch (error) {
+                        console.error('[Kutie] listener error:', error);
+                    }
+                }, 0);
             });
         }
     };

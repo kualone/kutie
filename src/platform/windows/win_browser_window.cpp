@@ -31,6 +31,7 @@ constexpr UINT WM_KUTIE_MINIMIZE = WM_USER + 3;
 constexpr UINT WM_KUTIE_MAXIMIZE = WM_USER + 4;
 constexpr UINT WM_KUTIE_RESTORE = WM_USER + 5;
 constexpr UINT WM_KUTIE_TOGGLE_MAXIMIZE = WM_USER + 6;
+constexpr UINT WM_KUTIE_EXECUTE_SCRIPT = WM_USER + 7;
 
 std::wstring MakeFallbackFolder(AssetBundle& assets) {
     WCHAR temp_dir[MAX_PATH];
@@ -178,9 +179,23 @@ void WinBrowserWindow::Close() {
 }
 
 void WinBrowserWindow::ExecuteScript(const std::string& script) {
-    if (!webview_ || !webview_ready_ || shutting_down_) {
+    if (!hwnd_ || !webview_ || !webview_ready_ || shutting_down_) {
         return;
     }
+
+    DWORD window_thread = 0;
+    GetWindowThreadProcessId(hwnd_, &window_thread);
+    if (window_thread != 0 && GetCurrentThreadId() != window_thread) {
+        auto* queued_script = new (std::nothrow) std::string(script);
+        if (queued_script == nullptr) {
+            return;
+        }
+        if (!PostMessageW(hwnd_, WM_KUTIE_EXECUTE_SCRIPT, 0, reinterpret_cast<LPARAM>(queued_script))) {
+            delete queued_script;
+        }
+        return;
+    }
+
     webview_->ExecuteScript(platform::windows::Utf8ToWide(script).c_str(), nullptr);
 }
 
@@ -767,6 +782,18 @@ LRESULT CALLBACK WinBrowserWindow::WindowProc(HWND hwnd, UINT message, WPARAM wp
     case WM_KUTIE_TOGGLE_MAXIMIZE:
         ShowWindow(hwnd, IsZoomed(hwnd) ? SW_RESTORE : SW_MAXIMIZE);
         return 0;
+
+    case WM_KUTIE_EXECUTE_SCRIPT: {
+        auto* script = reinterpret_cast<std::string*>(lparam);
+        if (script != nullptr) {
+            if (window->webview_ && window->webview_ready_ && !window->shutting_down_) {
+                window->webview_->ExecuteScript(
+                    platform::windows::Utf8ToWide(*script).c_str(), nullptr);
+            }
+            delete script;
+        }
+        return 0;
+    }
 
     case WM_CLOSE:
         if (window->on_close_ && !window->on_close_()) {
