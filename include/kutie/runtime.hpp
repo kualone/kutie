@@ -14,6 +14,8 @@ public:
         BrowserWindowOptions main_window;
         /// Optional disk fallback path for development (UTF-8). When empty, uses {exe_dir}/frontend.
         std::string dev_frontend_path;
+        /// Persistent WebView2 user data folder (UTF-8). When empty, uses %LOCALAPPDATA%\\Kutie\\WebView2.
+        std::string webview_user_data_folder;
     };
 
     using ReadyHandler = std::function<void(Runtime&)>;

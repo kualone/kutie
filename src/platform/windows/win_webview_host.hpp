@@ -13,13 +13,17 @@ public:
 
     static WinWebViewHost& Instance();
 
+    void SetUserDataFolder(std::wstring folder);
     void EnsureReady(ReadyCallback callback);
     ICoreWebView2Environment* Environment() const;
 
 private:
     WinWebViewHost() = default;
 
+    std::wstring ResolveUserDataFolder() const;
+
     mutable std::mutex mutex_;
+    std::wstring user_data_folder_;
     ICoreWebView2Environment* environment_ = nullptr;
     bool initializing_ = false;
     std::vector<ReadyCallback> pending_;

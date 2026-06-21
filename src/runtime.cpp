@@ -59,6 +59,10 @@ void RegisterWindowVoidHandler(IpcHub& ipc, const char* name, WindowVoidMethod m
 
 Runtime::Runtime(const Config& config)
     : config_(config) {
+    if (!config_.webview_user_data_folder.empty()) {
+        WinWebViewHost::Instance().SetUserDataFolder(
+            platform::windows::Utf8ToWide(config_.webview_user_data_folder));
+    }
     LoadAssets();
     RegisterBuiltInHandlers();
 }
